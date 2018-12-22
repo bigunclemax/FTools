@@ -6,26 +6,67 @@
 #include <list>
 #include <regex>
 
+#include <cxxopts.hpp>
+
 #include "VbfFile.h"
 
+#define VERSION "0.1"
 
 using namespace std;
 
-
-
 int main(int argc, char **argv)
 {
-    if(argc < 2){
-        cout << "Pls, specify file" << endl;
-        return 0;
-    }
+    try {
+        bool pack = false;
+        bool unpack = false;
 
-    VbfFile vbf;
-    vbf.OpenFile(argv[1]);
-    if(vbf.IsOpen())
-        vbf.Export("./");
-    else
-        cout << "open error" << endl;
+        cxxopts::Options options("VbfEdit", "Simple console VBF files unpacker/packer");
+        options.add_options()
+                ("p,pack","Pack VBF file", cxxopts::value<bool>(pack))
+                ("u,unpack","Unpack VBF file", cxxopts::value<bool>(unpack))
+                ("i,input","Input file", cxxopts::value<string>())
+                ("o,output","Output directory", cxxopts::value<string>()->default_value(""))
+                ("v,version","Print version")
+                ("h,help","Print help");
+
+        auto result = options.parse(argc, argv);
+
+        if(result.arguments().empty() || result.count("help")){
+            cout << options.help() << std::endl;
+            return 0;
+        }
+
+        if(result.count("version")){
+            cout << "VbfEdit version: " << VERSION <<std::endl;
+            return 0;
+        }
+
+        if(!result.count("input")){
+            cout << "Please, specify input file" << std::endl;
+            return 0;
+        }
+
+        if (pack){
+            cout << "Sry, pack currently not supported" << endl;
+            return 0;
+        }
+
+        if(unpack){
+            VbfFile vbf;
+            vbf.OpenFile(result["input"].as<string>());
+            if(vbf.IsOpen())
+                vbf.Export(result["output"].as<string>());
+            else
+                cout << "open error" << endl;
+
+            return 0;
+        }
+
+        cout << options.help() << std::endl;
+
+    } catch (const cxxopts::OptionException& e){
+        cout << "error parsing options: " << e.what() << endl;
+    }
 
     return 0;
 }

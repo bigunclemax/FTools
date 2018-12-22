@@ -43,6 +43,8 @@ int VbfFile::OpenFile (string file_name) {
     m_file_name = getFileName(file_name);
     m_file_length = file_buff.size();
 
+    cout << "Parse VBF file " << m_file_name << " Size: " << m_file_length << " bytes" << endl;
+
     //start read ascii header and search first '{'
     auto opened_brackets =0;
     for(auto symbol : file_buff) {
@@ -79,6 +81,8 @@ int VbfFile::OpenFile (string file_name) {
         return -1;
     }
 
+    cout << "VBF data CRC - [correct]" << endl << endl;
+
     //start read binary sections
     auto i = data_section_offset;
     while(i < file_buff.size()){
@@ -98,7 +102,7 @@ int VbfFile::OpenFile (string file_name) {
 
         auto crc = CRC::Calculate(&new_section->data[0], new_section->length, CRC::CRC_16_CCITTFALSE());
 
-        cout << std::hex << "###Got section###" << endl
+        cout << std::hex << "### Got section ###" << endl
              << "Section start addr: 0x" << new_section->start_addr << endl
              << "Length: 0x" <<  new_section->length << endl
              << "CRC: 0x" << crc << ((new_section->crc16 == crc) ? " [correct]" : " [ERROR]") << endl << endl;
@@ -116,28 +120,32 @@ int VbfFile::Export(string out_dir){
         return -1;
     }
 
-    //TODO: make template to save file
+    auto SaveToFile = [](string file_name, char* data_ptr, int data_len) {
+        ofstream out_file(file_name, ios::out | ios::binary);
+        if(!out_file) {
+            cout << "file: " << file_name << " can't be created" << endl;
+        } else {
+            out_file.write(data_ptr, data_len);
+        }
+        out_file.close();
+    };
+
     stringstream str_buff;
     str_buff << out_dir << m_file_name << "_ascii_head.txt";
-    ofstream out_file(str_buff.str(), ios::out);
-    if(!out_file) {
-        cout << "file: " << str_buff.str() << " can't be created" << endl;
-    } else {
-        out_file.write(reinterpret_cast<const char *>(&m_ascii_header[0]), m_ascii_header.length());
-    }
+    SaveToFile(str_buff.str(), &m_ascii_header[0], m_ascii_header.length());
 
     for(auto section : m_bin_sections) {
-        stringstream str_buff;
+        str_buff.str(string());
+        str_buff.clear();
         str_buff << std::hex << out_dir << m_file_name << "_section_"
                  << section->start_addr << "_" << section->length << ".bin";
-        ofstream out_file(str_buff.str(), ios::binary | ios::out);
-        if(!out_file) {
-            cout << "file: " << str_buff.str() << " can't be created" << endl;
-            continue;
-        }
-        out_file.write(reinterpret_cast<const char *>(&section->data[0]), section->data.size());
-        out_file.close();
+
+        SaveToFile(str_buff.str(), reinterpret_cast<char*>(&section->data[0]), section->data.size());
     }
 
     return 0;
+}
+
+int VbfFile::Import(string descr_file) {
+    return -1;
 }

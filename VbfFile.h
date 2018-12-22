@@ -30,6 +30,7 @@ public:
     bool IsOpen() const { return m_is_open;};
     int OpenFile (std::string file_name);
     int Export(std::string out_dir);
+    int Import(std::string descr_file);
 };
 
 
