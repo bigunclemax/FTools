@@ -4,6 +4,16 @@
 
 #include "EifImage.h"
 
+uint8_t EifImageBase::alfaComposing(uint8_t c1, uint8_t a1, uint8_t c2, uint8_t a2)
+{
+    auto c1_premul = (uint8_t)(c1 * a1 / 0xFF);
+    auto c2_premul = (uint8_t)(c2 * a2 / 0xFF);
+
+    uint8_t res = c1_premul + (uint8_t)(c2_premul * (0xFF - a1) / 0xFF);
+
+    return res;
+}
+
 void EifImageMonochrome::printAscii() {
 
     auto i = 0;
@@ -24,7 +34,6 @@ void EifImageMonochrome::printAscii() {
 
 void EifImageMonochrome::saveBmp(std::string fileName){
 
-    //TODO: add color process
     bitmap_image bmp_image(width, height);
     for(auto i =0; i < height; i++){
         for(auto j=0; j < width; j++){
@@ -150,9 +159,16 @@ void EifImageMulticolor::saveBmp(std::string fileName) {
     for(auto i =0; i < height; i++){
         for(auto j=0; j < width; j++){
             auto pixel = *(&bitmap_data[0] + i * width *2 + j*2);
+            uint8_t A = *(&bitmap_data[0] + 1 + i * width *2 + j*2);
+
             uint8_t R = palette[pixel*3];
             uint8_t G = palette[pixel*3+1];
             uint8_t B = palette[pixel*3+2];
+
+            B = alfaComposing(B,A);
+            G = alfaComposing(G,A);
+            R = alfaComposing(R,A);
+
             bmp_image.set_pixel(j, i, R,G,B);
         }
     }
@@ -222,6 +238,11 @@ void EifImageMegacolor::saveBmp(std::string fileName) {
             uint8_t G = *(&bitmap_data[0] + 1 + i * width *4 + j*4);
             uint8_t R = *(&bitmap_data[0] + 2 + i * width *4 + j*4);
             uint8_t A = *(&bitmap_data[0] + 3 + i * width *4 + j*4);
+
+            B = alfaComposing(B,A);
+            G = alfaComposing(G,A);
+            R = alfaComposing(R,A);
+
             bmp_image.set_pixel(j, i, R,G,B);
         }
     }

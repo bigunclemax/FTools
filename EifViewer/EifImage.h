@@ -12,7 +12,6 @@
 #ifndef VBFEDIT_EIFIMAGE_H
 #define VBFEDIT_EIFIMAGE_H
 
-#define LONG_HEADER_LEN 784
 static const uint8_t EIF_SIGNATURE[] = {'E','B','D',0x10,'E','I','F'};
 static const uint8_t EIF_TYPE_MONOCHROME = 0x04;
 static const uint8_t EIF_TYPE_MULTICOLOR = 0x07;
@@ -37,10 +36,11 @@ public:
     virtual void printAscii() = 0;
     virtual void saveBmp(std::string fileName) = 0;
     virtual ~EifImageBase(){};
+    static uint8_t alfaComposing(uint8_t c1, uint8_t a1, uint8_t c2 = 0xFF, uint8_t a2 = 0xFF);
 };
 
 class EifImageMonochrome: public EifImageBase {
-    uint8_t base_color;
+//    uint8_t base_color;
 public:
     int openImage(const std::vector<uint8_t>& data) override;
     void printAscii() override;
@@ -56,7 +56,6 @@ public:
 };
 
 class EifImageMegacolor: public EifImageBase {
-//    std::vector<uint8_t> palette; //TODO:
 public:
     int openImage(const std::vector<uint8_t>& data) override;
     void printAscii() override;
