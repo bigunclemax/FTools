@@ -12,23 +12,21 @@
 
 using namespace std;
 
-void saveImage(EifImageBase* img, string file_name) {
-    img->saveBmp(file_name);
-}
-
 int main(int argc, char **argv)
 {
     try {
 
-        bool save = false;
-        bool view = false;
+        bool pack = false;
+        bool unpack = false;
+        unsigned depth = 32;
 
         cxxopts::Options options("eif2bitmap", "Ford EDB.EIF viewer ");
         options.add_options()
-                ("s,save","Save bitmap image to file", cxxopts::value<bool>(save))
-                ("v,view","Print ASCII representation", cxxopts::value<bool>(view))
+                ("p,pack","Pack VBF file", cxxopts::value<bool>(pack))
+                ("u,unpack","Unpack VBF file", cxxopts::value<bool>(unpack))
+                ("d,depth","Eif type", cxxopts::value<unsigned>(depth))
                 ("i,input","Input file", cxxopts::value<string>())
-                ("o,output","Output directory", cxxopts::value<string>()->default_value(""))
+                ("o,output","Output file", cxxopts::value<string>())
                 ("h,help","Print help");
 
         auto result = options.parse(argc, argv);
@@ -42,48 +40,74 @@ int main(int argc, char **argv)
             cout << "Please, specify input file" << std::endl;
             return 0;
         }
+        auto input_file_name = result["input"].as<string>();
 
-        auto file_name = result["input"].as<string>();
-        ifstream in_file(file_name, ios::binary | ios::ate);
-        if(in_file.fail())
-            throw runtime_error("File open error");
-//        in_file.exceptions(in_file.failbit); gcc sucks
+        string out_file_name;
+        if(result.count("output")){
+            out_file_name = result["output"].as<string>();
+        }
 
-        auto pos = in_file.tellg();
-        in_file.seekg(0, ios::beg);
+        if(unpack) {
+            ifstream in_file(input_file_name, ios::binary | ios::ate);
+            if(in_file.fail())
+                throw runtime_error("File open error");
 
-        vector<uint8_t> file_content(pos);
-        in_file.read(reinterpret_cast<char *>(&file_content[0]), file_content.size());
-//        in_file.exceptions(in_file.failbit); gcc sucks
-        if(in_file.fail())
-            throw runtime_error("File open error");
-        in_file.close();
+            auto pos = in_file.tellg();
+            in_file.seekg(0, ios::beg);
 
-        EifImageBase* img;
-        EifImageMonochrome mono_img;
-        EifImageMulticolor colur_img;
-        EifImageMegacolor mega_img;
-        if(file_content[7] == EIF_TYPE_MONOCHROME) {
-            mono_img.openImage(file_content);
-            img = &mono_img;
-        } else if(file_content[7] == EIF_TYPE_MULTICOLOR) {
-                colur_img.openImage(file_content);
-                img = &colur_img;
-        } else if(file_content[7] == EIF_TYPE_SUPERCOLOR){
-            mega_img.openImage(file_content);
-            img = &mega_img;
-        } else {
+            vector<uint8_t> file_content(pos);
+            in_file.read(reinterpret_cast<char *>(&file_content[0]), file_content.size());
+            if(in_file.fail())
+                throw runtime_error("File open error");
+            in_file.close();
+
+            if(out_file_name.empty()){
+                out_file_name = input_file_name + ".bmp";
+            }
+
+            EifImageBase* image;
+
+            if(file_content[7] == EIF_TYPE_MONOCHROME) {
+                image = new EifImage8bit;
+            } else if(file_content[7] == EIF_TYPE_MULTICOLOR) {
+                image = new EifImage16bit;
+            } else if(file_content[7] == EIF_TYPE_SUPERCOLOR){
+                image = new EifImage32bit;
+            } else {
                 throw runtime_error("unsupported format");
-        }
+            }
 
-        if(save) {
-            img->saveBmp(file_name);
-        }
+            image->openEif(file_content);
+            image->saveBmp(out_file_name);
 
-        if(view) {
-            img->printAscii();
-        }
+            delete image;
 
+        } else if(pack) {
+
+            if(out_file_name.empty()){
+                out_file_name = input_file_name + ".eif";
+            }
+
+            EifImageBase* image;
+            switch (depth) {
+                case 8:
+                    image = new EifImage8bit;
+                    break;
+                case 16:
+                    image = new EifImage16bit;
+                    break;
+                case 32:
+                    image = new EifImage32bit;
+                    break;
+                default:
+                    throw runtime_error("Incorrect depth value");
+            }
+
+            image->openBmp(input_file_name);
+            image->saveEif(out_file_name);
+
+            delete image;
+        }
     } catch (const cxxopts::OptionException& e){
         cout << "error parsing options: " << e.what() << endl;
         return -1;

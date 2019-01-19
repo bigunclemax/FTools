@@ -7,7 +7,8 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
-#include <bitmap_image.hpp>
+//#include <bitmap_image.hpp>
+#include <EasyBMP.h>
 
 #ifndef VBFEDIT_EIFIMAGE_H
 #define VBFEDIT_EIFIMAGE_H
@@ -32,34 +33,37 @@ protected:
     unsigned height;
     std::vector<uint8_t> bitmap_data;
 public:
-    virtual int openImage(const std::vector<uint8_t>& data) = 0;
-    virtual void printAscii() = 0;
+    virtual int openEif(const std::vector<uint8_t>& data) = 0;
+    virtual int openBmp(std::string fileName) = 0;
     virtual void saveBmp(std::string fileName) = 0;
+    virtual void saveEif(std::string fileName) = 0;
     virtual ~EifImageBase(){};
-    static uint8_t alfaComposing(uint8_t c1, uint8_t a1, uint8_t c2 = 0xFF, uint8_t a2 = 0xFF);
 };
 
-class EifImageMonochrome: public EifImageBase {
-//    uint8_t base_color;
+class EifImage8bit: public EifImageBase {
 public:
-    int openImage(const std::vector<uint8_t>& data) override;
-    void printAscii() override;
-    void saveBmp(std::string fileName) override;
+    int openEif(const std::vector<uint8_t>& data) override;
+    void saveBmp(std::string file_name) override;
+    int openBmp(std::string file_name) override;
+    void saveEif(std::string file_name)override;
 };
 
-class EifImageMulticolor: public EifImageBase {
-    std::vector<uint8_t> palette; //TODO:
+class EifImage16bit: public EifImageBase {
+    std::vector<uint8_t> palette;
+    uint8_t searchPixel(RGBApixel rgb_pixel);
 public:
-    int openImage(const std::vector<uint8_t>& data) override;
-    void printAscii() override;
-    void saveBmp(std::string fileName) override;
+    int openEif(const std::vector<uint8_t>& data) override;
+    void saveBmp(std::string file_name) override;
+    int openBmp(std::string file_name) override;
+    void saveEif(std::string file_name)override;
 };
 
-class EifImageMegacolor: public EifImageBase {
+class EifImage32bit: public EifImageBase {
 public:
-    int openImage(const std::vector<uint8_t>& data) override;
-    void printAscii() override;
-    void saveBmp(std::string fileName) override;
+    int openEif(const std::vector<uint8_t>& data) override;
+    int openBmp(std::string file_name) override;
+    void saveBmp(std::string file_name) override;
+    void saveEif(std::string file_name) override;
 };
 
 #endif //VBFEDIT_EIFIMAGE_H
