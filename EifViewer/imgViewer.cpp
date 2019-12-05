@@ -24,7 +24,7 @@ int main(int argc, char **argv)
         options.add_options()
                 ("p,pack","Pack VBF file", cxxopts::value<bool>(pack))
                 ("u,unpack","Unpack VBF file", cxxopts::value<bool>(unpack))
-                ("d,depth","Eif type", cxxopts::value<unsigned>(depth))
+                ("d,depth","Output Eif type", cxxopts::value<unsigned>(depth))
                 ("i,input","Input file", cxxopts::value<string>())
                 ("o,output","Output file", cxxopts::value<string>())
                 ("h,help","Print help");
