@@ -1,0 +1,3 @@
+// the configured options and settings for Tutorial
+#define Vbfedit_VERSION_MAJOR @vbfedit_VERSION_MAJOR@
+#define Vbfedit_VERSION_MINOR @vbfedit_VERSION_MINOR@

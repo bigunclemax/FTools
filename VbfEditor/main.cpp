@@ -7,10 +7,9 @@
 #include <regex>
 
 #include <cxxopts.hpp>
-
+#include "VbfeditConfig.h"
 #include "VbfFile.h"
 
-#define VERSION "0.1"
 
 using namespace std;
 
@@ -20,7 +19,7 @@ int main(int argc, char **argv)
         bool pack = false;
         bool unpack = false;
 
-        cxxopts::Options options("VbfEdit", "Simple console VBF files unpacker/packer");
+        cxxopts::Options options("VBFEditor", "Simple console VBF files unpacker/packer");
         options.add_options()
                 ("p,pack","Pack VBF file", cxxopts::value<bool>(pack))
                 ("u,unpack","Unpack VBF file", cxxopts::value<bool>(unpack))
@@ -28,6 +27,8 @@ int main(int argc, char **argv)
                 ("o,output","Output directory", cxxopts::value<string>()->default_value(""))
                 ("v,version","Print version")
                 ("h,help","Print help");
+
+        options.parse_positional({"input"});
 
         auto result = options.parse(argc, argv);
 
@@ -37,7 +38,10 @@ int main(int argc, char **argv)
         }
 
         if(result.count("version")){
-            cout << "VbfEdit version: " << VERSION <<std::endl;
+            cout << "VbfEdit version: "
+            << Vbfedit_VERSION_MAJOR
+            << Vbfedit_VERSION_MINOR
+            << std::endl;
             return 0;
         }
 
