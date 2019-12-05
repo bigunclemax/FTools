@@ -1,0 +1,9 @@
+[submodule "CRCpp"]
+	path = CRCpp
+	url = https://github.com/d-bahr/CRCpp.git
+[submodule "cxxopts"]
+	path = cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
+[submodule "rapidjson"]
+	path = rapidjson
+	url = https://github.com/Tencent/rapidjson.git
