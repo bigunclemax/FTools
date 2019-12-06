@@ -1,10 +1,5 @@
-#include <winsock2.h>
-
 #include <iostream>
-#include <fstream>
 #include <streambuf>
-#include <list>
-#include <regex>
 
 #include <cxxopts.hpp>
 #include "VbfeditConfig.h"

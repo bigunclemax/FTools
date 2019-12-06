@@ -11,7 +11,11 @@
 #include <CRC.h>
 #include "VbfFile.h"
 
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
+
 using namespace std;
+using namespace rapidjson;
 
 int VbfFile::OpenFile(string file_name) {
 
@@ -143,6 +147,38 @@ int VbfFile::Export(string out_dir) {
 
         SaveToFile(str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
     }
+
+    //create json
+    Document document;
+    Document::AllocatorType& allocator = document.GetAllocator();
+
+    Value obj(kObjectType);
+    {
+        Value header(kObjectType);
+        {
+            Value file(kStringType);
+            header.AddMember("file", file, allocator);
+        }
+
+        Value sections(kArrayType);
+        {
+            Value section(kObjectType);
+            {
+                Value file(kStringType);
+                section.AddMember("file", file, allocator);
+
+                Value address(kNumberType);
+                section.AddMember("address", address, allocator);
+            }
+            sections.PushBack(section, allocator);
+        }
+        obj.AddMember("header", header, allocator);
+        obj.AddMember("sections", sections, allocator);
+    }
+
+    StringBuffer buffer;
+    Writer<StringBuffer> writer(buffer);
+    document.Accept(writer);
 
     return 0;
 }
