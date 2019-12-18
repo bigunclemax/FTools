@@ -8,7 +8,7 @@
 #include <iostream>
 #include <iomanip>
 //#include <bitmap_image.hpp>
-#include <EasyBMP.h>
+#include "EasyBMP/EasyBMP.h"
 
 #ifndef VBFEDIT_EIFIMAGE_H
 #define VBFEDIT_EIFIMAGE_H

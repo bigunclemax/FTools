@@ -243,7 +243,7 @@ int EifImage16bit::openBmp(std::string file_name) {
     bitmap_data.resize(height * aligned_width * 2);
 
     for(auto i =0; i < height; i++){
-        for(auto j=0; j < width; j++){
+        for(auto j=0; j < width; j++){ //TODO: maybe this need aligned_width ?
             if(j >= width){
                 bitmap_data[0 + i * width *2 + j*2] = 0x0;
                 bitmap_data[1 + i * width *2 + j*2] = 0x0;
