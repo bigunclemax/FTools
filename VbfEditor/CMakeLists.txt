@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.10)
 
 project(vbfeditor)
 # The version number.
@@ -23,6 +23,6 @@ include_directories(../cxxopts/include)
 include_directories(../CRCpp/inc)
 
 add_executable(vbfeditor main.cpp VbfFile.cpp VbfFile.h)
+#target_link_libraries(vbfeditor ws2_32)
 
 install(TARGETS vbfeditor DESTINATION "../bin")
-

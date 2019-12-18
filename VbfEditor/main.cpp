@@ -46,7 +46,13 @@ int main(int argc, char **argv)
         }
 
         if (pack){
-            cout << "Sry, pack currently not supported" << endl;
+            VbfFile vbf;
+            vbf.Import(result["input"].as<string>());
+            if(vbf.IsOpen())
+                vbf.SaveToFile(result["output"].as<string>());
+            else
+                cout << "import error" << endl;
+
             return 0;
         }
 

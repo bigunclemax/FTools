@@ -22,14 +22,16 @@ struct VbfBinarySection {
 class VbfFile {
     std::string m_file_name;
     uint32_t m_file_length;
-    uint32_t m_CRC32;
+    uint32_t m_CRC32;           //whole binary data CRC
+    uint32_t m_content_size;    //whole binary data size in bytes
     std::string m_ascii_header;
     std::list <VbfBinarySection *> m_bin_sections;
     bool m_is_open = false;
 public:
-    bool IsOpen() const { return m_is_open;};
-    int OpenFile (std::string file_name);
-    int Export(std::string out_dir);
+    [[nodiscard]] bool IsOpen() const { return m_is_open;};
+    int OpenFile (std::string file_path);
+    int SaveToFile (std::string file_path);
+    int Export(const std::string& out_dir);
     int Import(std::string descr_file);
 };
 

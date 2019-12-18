@@ -4,10 +4,11 @@
 #ifdef __linux__
 #include <arpa/inet.h>
 #elif _WIN32
-
 #include <winsock2.h>
 #endif
 
+#include <filesystem>
+#include <utility>
 #include <CRC.h>
 #include "VbfFile.h"
 
@@ -17,9 +18,13 @@
 using namespace std;
 using namespace rapidjson;
 
-int VbfFile::OpenFile(string file_name) {
+int VbfFile::OpenFile(string file_path) {
 
-    ifstream vbf_file(file_name, ios::binary | ios::ate);
+    ifstream vbf_file(file_path, ios::binary | ios::ate);
+    if(vbf_file.fail()) {
+        cout << "Open VBF file error" << endl;
+        return -1;
+    }
     ifstream::pos_type pos = vbf_file.tellg();
 
     vector<uint8_t> file_buff(pos);
@@ -32,20 +37,7 @@ int VbfFile::OpenFile(string file_name) {
     }
     vbf_file.close();
 
-    auto getFileName = [](string &file_name) {
-        char sep = '/';
-#ifdef _WIN32
-        sep = '\\';
-#endif
-        size_t i = file_name.rfind(sep, file_name.length());
-        if (i != string::npos) {
-            return (file_name.substr(i + 1, file_name.length() - i));
-        }
-
-        return file_name;
-    };
-
-    m_file_name = getFileName(file_name);
+    m_file_name = std::filesystem::path(file_path).filename();
     m_file_length = file_buff.size();
 
     cout << "Parse VBF file " << m_file_name << " Size: " << m_file_length << " bytes" << endl;
@@ -67,9 +59,7 @@ int VbfFile::OpenFile(string file_name) {
 
     //try to find file checksum
     smatch m;
-    regex e("\\bfile_checksum.*=.*0x(.*);");
-
-    regex_search(m_ascii_header, m, e);
+    regex_search(m_ascii_header, m, regex("\\bfile_checksum.*=.*0x(.*);"));
     if (m.size() != 2) {
         cout << "VBF ascii header not contain CRC32 checksum" << endl;
         return -1;
@@ -78,9 +68,20 @@ int VbfFile::OpenFile(string file_name) {
 
     //check crc32 of whole binary data section
     auto data_section_offset = m_ascii_header.length();
-    auto binary_data_len = file_buff.size() - data_section_offset;
+    m_content_size = file_buff.size() - data_section_offset;
 
-    auto crc32 = CRC::Calculate(&file_buff[data_section_offset], binary_data_len, CRC::CRC_32());
+    // try find content size in header
+    regex_search(m_ascii_header, m, regex("\\bBytes:.*?(\\d+)"));
+    if (m.size() != 2) {
+        cout << "Warn. VBF ascii header not contain content length" << endl;
+    } else {
+        if(m_content_size != (stoi(m[1]) + 20)) //NOTE: i don't know why but real content size 20 bytes more then header Bytes value
+        {
+            cout << "Warn. VBF ascii header content length and real content length mismatch" << endl;
+        }
+    }
+
+    auto crc32 = CRC::Calculate(&file_buff[data_section_offset], m_content_size, CRC::CRC_32());
     if (m_CRC32 != crc32) {
         cout << "VBF binary data wrong checksum " << endl;
         return -1;
@@ -119,13 +120,13 @@ int VbfFile::OpenFile(string file_name) {
     return 0;
 }
 
-int VbfFile::Export(string out_dir) {
+int VbfFile::Export(const string& out_dir) {
 
     if (!IsOpen()) {
         return -1;
     }
 
-    auto SaveToFile = [](string file_name, char *data_ptr, int data_len) {
+    auto SaveToFile = [](const string& file_name, char *data_ptr, int data_len) {
         ofstream out_file(file_name, ios::out | ios::binary);
         if (!out_file) {
             cout << "file: " << file_name << " can't be created" << endl;
@@ -135,55 +136,175 @@ int VbfFile::Export(string out_dir) {
         out_file.close();
     };
 
-    stringstream str_buff;
-    str_buff << out_dir << m_file_name << "_ascii_head.txt";
-    SaveToFile(str_buff.str(), &m_ascii_header[0], m_ascii_header.length());
+    Document document;
+    document.SetObject();
+    Document::AllocatorType& allocator = document.GetAllocator();
+    Value header(kObjectType);
+    Value sections(kArrayType);
+
+    string header_name = m_file_name + "_ascii_head.txt";
+    SaveToFile(out_dir + header_name, &m_ascii_header[0], m_ascii_header.length());
+    document.AddMember("header", Value(header_name.c_str(), allocator), allocator);
 
     for (auto section : m_bin_sections) {
-        str_buff.str(string());
-        str_buff.clear();
-        str_buff << std::hex << out_dir << m_file_name << "_section_"
-                 << section->start_addr << "_" << section->length << ".bin";
+        stringstream str_buff;
+        str_buff << m_file_name << "_section_" << std::hex << section->start_addr << "_" << section->length << ".bin";
 
-        SaveToFile(str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
-    }
-
-    //create json
-    Document document;
-    Document::AllocatorType& allocator = document.GetAllocator();
-
-    Value obj(kObjectType);
-    {
-        Value header(kObjectType);
+        SaveToFile(out_dir + str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
+        Value section_obj(kObjectType);
         {
-            Value file(kStringType);
-            header.AddMember("file", file, allocator);
+            section_obj.AddMember("file", Value(str_buff.str().c_str(), allocator), allocator);
+            stringstream _addr_hex;
+            _addr_hex << "0x" << std::hex << section->start_addr;
+            section_obj.AddMember("address", Value(_addr_hex.str().c_str(), allocator), allocator);
         }
-
-        Value sections(kArrayType);
-        {
-            Value section(kObjectType);
-            {
-                Value file(kStringType);
-                section.AddMember("file", file, allocator);
-
-                Value address(kNumberType);
-                section.AddMember("address", address, allocator);
-            }
-            sections.PushBack(section, allocator);
-        }
-        obj.AddMember("header", header, allocator);
-        obj.AddMember("sections", sections, allocator);
+        sections.PushBack(section_obj, allocator);
     }
+    document.AddMember("sections", sections, allocator);
 
     StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
+    PrettyWriter<StringBuffer> writer(buffer);
     document.Accept(writer);
+    ofstream config(m_file_name + "_config.json", ios::out);
+    config.write(buffer.GetString(), buffer.GetSize());
 
     return 0;
 }
 
-int VbfFile::Import(string descr_file) {
+int VbfFile::Import(string conf_file_path) {
+
+    ifstream config_file(conf_file_path);
+    if(config_file.fail()) {
+        return -1;
+    }
+
+    string content((istreambuf_iterator<char>(config_file)), istreambuf_iterator<char>());
+    Document document;
+    document.Parse(content.c_str());
+
+    Value& v = document["header"];
+    string header_file_path = v.GetString();
+    ifstream header_file(header_file_path);
+    if(header_file.fail()) {
+        cerr << "Can't open header " << header_file_path << endl;
+        return -1;
+    }
+    string vbf_header((istreambuf_iterator<char>(header_file)), istreambuf_iterator<char>());
+    size_t vbf_header_len = vbf_header.length();
+    //TODO: validate header
+
+    m_content_size =0;
+    uint32_t crc32 = 0;
+    {
+        const Value& sections = document["sections"];
+        assert(sections.IsArray());
+        for (SizeType i = 0; i < sections.Size(); ++i) {
+            auto sec_obj = sections[i].GetObject();
+            const Value& file = sec_obj["file"];
+            const Value& address = sec_obj["address"];
+
+            uint32_t vbf_section_addr = 0;
+
+            string address_str = address.GetString();
+            vbf_section_addr = strtoul(address_str.c_str(), nullptr, 16);
+
+            string vbf_section_path = file.GetString();
+            ifstream vbf_section(vbf_section_path, ios::binary | std::ios::ate);
+            if(vbf_section.fail()) {
+                cerr << "Can't open vbf section " << vbf_section_path << endl;
+            }
+            streamsize vbf_section_size = vbf_section.tellg();
+            vbf_section.seekg(0, ios::beg);
+
+            vector<uint8_t> vbf_section_data(vbf_section_size);
+            if (!vbf_section.read(reinterpret_cast<char *>(vbf_section_data.data()), vbf_section_size))
+                cerr << "Can't read vbf section file" << endl;
+
+            vbf_section.close();
+
+            auto *new_section = new VbfBinarySection();
+            new_section->start_addr = vbf_section_addr;
+            new_section->length = vbf_section_size;
+            new_section->data = vbf_section_data;
+            new_section->crc16 = CRC::Calculate(new_section->data.data(), new_section->length, CRC::CRC_16_CCITTFALSE());
+
+            uint32_t length_be = htonl(*reinterpret_cast<uint32_t *>(&new_section->length));
+            uint32_t addr_be = htonl(*reinterpret_cast<uint32_t *>(&new_section->start_addr));
+            uint16_t crc16_be = htons(*reinterpret_cast<uint16_t *>(&new_section->crc16));
+
+            crc32 = CRC::Calculate(&addr_be, sizeof(new_section->start_addr), CRC::CRC_32(), crc32);
+            crc32 = CRC::Calculate(&length_be, sizeof(new_section->length), CRC::CRC_32(), crc32);
+            crc32 = CRC::Calculate(new_section->data.data(), new_section->length, CRC::CRC_32(), crc32);
+            crc32 = CRC::Calculate(&crc16_be, sizeof(new_section->crc16), CRC::CRC_32(), crc32);
+
+            m_bin_sections.push_back(new_section);
+            m_content_size += (new_section->length + sizeof(uint32_t)*2 + sizeof(uint16_t));
+        }
+    }
+    m_CRC32 = crc32;
+    m_file_name = "imported.vbf";
+    m_ascii_header = vbf_header;
+    m_is_open = true;
 
     return -1;
+}
+
+int VbfFile::SaveToFile(std::string file_path) {
+
+    if(file_path.empty()) {
+        file_path = m_file_name;
+    }
+
+    auto search_and_replace = [](std::string& str, const std::string& oldStr, const std::string& newStr) {
+        std::string::size_type pos = 0u;
+        while((pos = str.find(oldStr, pos)) != std::string::npos){
+            str.replace(pos, oldStr.length(), newStr);
+            pos += newStr.length();
+        }
+    };
+
+    //header magic
+    stringstream str_buff;
+    str_buff << hex << setw(8) << setfill('0') << uppercase << m_CRC32;
+
+    // change crc
+    smatch m;
+    regex_search(m_ascii_header, m, regex("\\bfile_checksum.*=.*0x(.*);"));
+    if (m.size() != 2) {
+        cout << "VBF ascii header not contain CRC32 checksum" << endl;
+        return -1;
+    }
+    search_and_replace(m_ascii_header, m[1], str_buff.str());
+
+    // change length
+    regex_search(m_ascii_header, m, regex("// Bytes:    \\d+"));
+    if(!m.empty()) {
+        stringstream ss ;
+        ss << "// Bytes:    " << m_content_size - 20; //backward fix
+        search_and_replace(m_ascii_header, m[0], ss.str());
+    }
+
+    // create out file
+    ofstream outfile(file_path, ios::binary | ios::out);
+    if(outfile.fail()) {
+        cerr << "Can't create out file " << file_path << endl;
+        return -1;
+    }
+
+    outfile.write(m_ascii_header.c_str(), m_ascii_header.length());
+
+    uint32_t crc32 = 0;
+    for(auto section :m_bin_sections)
+    {
+        uint32_t length_be = htonl(*reinterpret_cast<uint32_t *>(&section->length));
+        uint32_t addr_be = htonl(*reinterpret_cast<uint32_t *>(&section->start_addr));
+        uint16_t crc16_be = htons(*reinterpret_cast<uint16_t *>(&section->crc16));
+
+        outfile.write(reinterpret_cast<char *>(&addr_be), sizeof(addr_be));
+        outfile.write(reinterpret_cast<char *>(&length_be), sizeof(length_be));
+        outfile.write(reinterpret_cast<char *>(section->data.data()), section->data.size());
+        outfile.write(reinterpret_cast<char *>(&crc16_be), sizeof(crc16_be));
+    }
+
+    return 0;
 }
