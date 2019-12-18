@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_SHARED_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
 #set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
 
-#add_subdirectory(EifViewer)
+add_subdirectory(EifViewer)
 add_subdirectory(ImgSectionParser)
 add_subdirectory(VbfEditor)
 

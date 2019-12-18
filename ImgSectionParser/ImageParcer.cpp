@@ -38,7 +38,7 @@ struct extracted_item {
 };
 
 int
-parcePictiresSection(const string& file_path, vector<struct extracted_item>& extracted_items)
+parsePicturesSection(const string& file_path, vector<struct extracted_item>& extracted_items)
 {
 
     ifstream vbf_file(file_path, ios::binary | ios::ate);
@@ -203,6 +203,7 @@ int main(int argc, char **argv)
                 ("o,output","Output directory", cxxopts::value<string>()->default_value(""))
                 ("h,help","Print help");
 
+        options.parse_positional({"input"});
         auto result = options.parse(argc, argv);
 
         if(result.arguments().empty() || result.count("help")){
@@ -216,7 +217,7 @@ int main(int argc, char **argv)
         }
 
         vector<struct extracted_item> extracted_items;
-        if(parcePictiresSection(result["input"].as<string>(), extracted_items)) {
+        if(parsePicturesSection(result["input"].as<string>(), extracted_items)) {
             return 0;
         }
 
