@@ -7,3 +7,6 @@
 [submodule "rapidjson"]
 	path = rapidjson
 	url = https://github.com/Tencent/rapidjson.git
+[submodule "miniz"]
+	path = miniz
+	url = https://github.com/richgel999/miniz.git
