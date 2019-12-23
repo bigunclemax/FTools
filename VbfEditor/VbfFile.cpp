@@ -165,7 +165,7 @@ int VbfFile::Export(const string& out_dir) {
     StringBuffer buffer;
     PrettyWriter<StringBuffer> writer(buffer);
     document.Accept(writer);
-    ofstream config(m_file_name + "_config.json", ios::out);
+    ofstream config(out_dir + m_file_name + "_config.json", ios::out);
     config.write(buffer.GetString(), buffer.GetSize());
 
     return 0;
