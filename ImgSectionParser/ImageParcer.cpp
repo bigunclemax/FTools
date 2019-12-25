@@ -11,13 +11,14 @@
 #include <miniz_zip.h>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
+#include <filesystem>
 
 #include "CRC.h"
 #include <cxxopts.hpp>
 
 using namespace std;
 using namespace rapidjson;
-
+namespace fs = std::filesystem;
 
 #define START_ZIP_SECTION 0x9094
 
@@ -65,7 +66,7 @@ inline const char* ToString(image_type v)
 auto SaveToFile(const string& file_name, char *data_ptr, int data_len) {
     ofstream out_file(file_name, ios::out | ios::binary);
     if (!out_file) {
-        cout << "file: " << file_name << " can't be created" << endl;
+        cerr << "file: " << file_name << " can't be created" << endl;
     } else {
         out_file.write(data_ptr, data_len);
     }
@@ -73,12 +74,12 @@ auto SaveToFile(const string& file_name, char *data_ptr, int data_len) {
 }
 
 int parsePicturesSection(const string& file_path,
-        const string& out_path_pref, bool verbose, bool need_extract)
+                         const string& out_path_dir, bool verbose, bool need_extract)
 {
 
     ifstream vbf_file(file_path, ios::binary | ios::ate);
     if(!vbf_file){
-        cout << "Input file not found" << endl;
+        cerr << "Input file not found" << endl;
         return -1;
     }
     ifstream::pos_type pos = vbf_file.tellg();
@@ -88,11 +89,11 @@ int parsePicturesSection(const string& file_path,
 
     vbf_file.read(reinterpret_cast<char*>(&file_buff[0]), file_buff.size());
     if(!vbf_file){
-        cout << "Read section error, only " << vbf_file.gcount() << " could be read" << endl;
+        cerr << "Read section error, only " << vbf_file.gcount() << " could be read" << endl;
         return -1;
     }
     vbf_file.close();
-    cout << "Read 0x" << std::hex << pos << " bytes" << resetiosflags(ios::hex) << endl;
+    cerr << "Read 0x" << std::hex << pos << " bytes" << resetiosflags(ios::hex) << endl;
 
     auto read_idx = START_ZIP_SECTION;
     // parse Zip headers block
@@ -101,7 +102,7 @@ int parsePicturesSection(const string& file_path,
     auto zip_headers_offset = &file_buff[read_idx];
     read_idx += sizeof(struct zip_file) * itemsCount;
     auto zip_count = itemsCount;
-    cout << "ZIP Items count " << itemsCount << endl;
+    cerr << "ZIP Items count " << itemsCount << endl;
 
     // parse TTF headers block
     itemsCount = *reinterpret_cast<uint32_t *>(&file_buff[read_idx]);
@@ -109,12 +110,17 @@ int parsePicturesSection(const string& file_path,
     auto ttf_headers_offset = &file_buff[read_idx];
     read_idx += sizeof(struct ttf_file) * itemsCount;
     auto ttf_count = itemsCount;
-    cout << "TTF Items count " << itemsCount << endl;
+    cerr << "TTF Items count " << itemsCount << endl;
 
     auto magicInt =  *reinterpret_cast<uint32_t *>(&file_buff[read_idx]);
     read_idx += sizeof(uint32_t);
-    cout << "unknown num 0x" << hex << magicInt << resetiosflags(ios::hex) << endl;
-    cout << "data offset is 0x" << hex << read_idx << resetiosflags(ios::hex) << endl;
+    cerr << "unknown num 0x" << hex << magicInt << resetiosflags(ios::hex) << endl;
+    cerr << "data offset is 0x" << hex << read_idx << resetiosflags(ios::hex) << endl;
+
+    if(need_extract) {
+        fs::create_directory(out_path_dir + "/zip");
+        fs::create_directory(out_path_dir + "/ttf");
+    }
 
     Document document;
     document.SetObject();
@@ -125,19 +131,19 @@ int parsePicturesSection(const string& file_path,
         stringstream str_buff;
         str_buff << "_header.bin";
 
-        SaveToFile(out_path_pref + str_buff.str(),
-                   reinterpret_cast<char *>(file_buff.data()),read_idx);
+        SaveToFile(out_path_dir + str_buff.str(),
+                   reinterpret_cast<char *>(file_buff.data()), read_idx);
 
         document.AddMember("header", Value(str_buff.str().c_str(), allocator), allocator);
     }
 
     if(verbose) {
-        cout
+        cerr
         << "#####################" << endl
         << "#### ZIP section ####" << endl
         << "#####################" << endl;
 
-        cout    << "   # "
+        cerr    << "   # "
                 << " | "
                 << "          ASCII string          "
                 << " | "
@@ -163,7 +169,7 @@ int parsePicturesSection(const string& file_path,
         string _str(zip_header.fileName);
         regex_search(_str, m, regex("(\\d+).zip"));
         if (m.size() != 2) {
-            cout << "zip header name not contain actual size!" << endl;
+            cerr << "zip header name not contain actual size!" << endl;
             return -1;
         }
         auto actual_sz = stoul(m[1].str().c_str(), nullptr, 10);
@@ -198,7 +204,7 @@ int parsePicturesSection(const string& file_path,
             mz_zip_reader_get_filename(&zip_archive, 0, _fileName, 32);
             mz_zip_reader_end(&zip_archive);
 
-            cout << resetiosflags(ios::hex) << std::setfill(' ')
+            cerr << resetiosflags(ios::hex) << std::setfill(' ')
                 << setw(5) << i
                 << " | "
                 << setiosflags(ios::left) << setw(32) << zip_header.fileName << resetiosflags(ios::left)
@@ -218,14 +224,15 @@ int parsePicturesSection(const string& file_path,
         if(need_extract) {
 
             stringstream str_buff;
-            str_buff << i << ".zip";
+            str_buff << "zip/" << i << ".zip";
+            string file_name = str_buff.str();
 
-            SaveToFile(out_path_pref + str_buff.str(),
+            SaveToFile(out_path_dir + "/" + file_name,
                        reinterpret_cast<char *>(&file_buff[relative_offset]), actual_sz);
 
             Value section_obj(kObjectType);
             {
-                section_obj.AddMember("file", Value(str_buff.str().c_str(), allocator), allocator);
+                section_obj.AddMember("file", Value(file_name.c_str(), allocator), allocator);
                 stringstream _addr_hex;
                 _addr_hex << "0x" << std::hex << relative_offset;
                 section_obj.AddMember("relative-offset", Value(_addr_hex.str().c_str(), allocator), allocator);
@@ -239,17 +246,19 @@ int parsePicturesSection(const string& file_path,
         }
     }
 
-    cout
-            << "#####################" << endl
-            << "#### TTF section ####" << endl
-            << "#####################" << endl;
+    if(verbose) {
+        cerr
+                << "#####################" << endl
+                << "#### TTF section ####" << endl
+                << "#####################" << endl;
 
-    cout    << "   # "
-            << " | "
-            << "          ASCII string          "
-            << " | "
-            << "  Size  "
-            << endl;
+        cerr << "   # "
+             << " | "
+             << "          ASCII string          "
+             << " | "
+             << "  Size  "
+             << endl;
+    }
 
     auto ttf_header_ptr = reinterpret_cast<struct ttf_file *>(ttf_headers_offset);
     for(int i=0; i < ttf_count; ++i) {
@@ -261,7 +270,7 @@ int parsePicturesSection(const string& file_path,
         string _str(ttf_header.fileName);
         regex_search(_str, m, regex("(\\d+).ttf"));
         if (m.size() != 2) {
-            cout << "ttf header name not contain actual size!" << endl;
+            cerr << "ttf header name not contain actual size!" << endl;
             return -1;
         }
         auto actual_sz = stoul(m[1].str().c_str(), nullptr, 10);
@@ -284,7 +293,7 @@ int parsePicturesSection(const string& file_path,
         auto padded_sz = actual_sz + ((remainder) ? (4 - remainder) : 0);
 
         if(verbose) {
-            cout << resetiosflags(ios::hex)  << std::setfill(' ')
+            cerr << resetiosflags(ios::hex)  << std::setfill(' ')
                  << setw(5) << i
                  << " | "
                  << setiosflags(ios::left) << setw(32) << ttf_header.fileName << resetiosflags(ios::left)
@@ -296,14 +305,15 @@ int parsePicturesSection(const string& file_path,
         if(need_extract) {
 
             stringstream str_buff;
-            str_buff << i << ".ttf";
+            str_buff << "ttf/" << i << ".ttf";
+            string file_name = str_buff.str();
 
-            SaveToFile(out_path_pref + str_buff.str(),
+            SaveToFile(out_path_dir + "/" + file_name,
                        reinterpret_cast<char *>(&file_buff[relative_offset]), actual_sz);
 
             Value section_obj(kObjectType);
             {
-                section_obj.AddMember("file", Value(str_buff.str().c_str(), allocator), allocator);
+                section_obj.AddMember("file", Value(file_name.c_str(), allocator), allocator);
                 stringstream _addr_hex;
                 _addr_hex << "0x" << std::hex << relative_offset;
                 section_obj.AddMember("relative-offset", Value(_addr_hex.str().c_str(), allocator), allocator);
@@ -321,7 +331,7 @@ int parsePicturesSection(const string& file_path,
         StringBuffer buffer;
         PrettyWriter<StringBuffer> writer(buffer);
         document.Accept(writer);
-        ofstream config(out_path_pref + "_config.json", ios::out);
+        ofstream config(out_path_dir + "_config.json", ios::out);
         config.write(buffer.GetString(), buffer.GetSize());
     }
 
@@ -330,20 +340,28 @@ int parsePicturesSection(const string& file_path,
 
 int packPicturesSection(const string& conf_file_path, const string& out_path_pref)
 {
+    fs::path config_path(conf_file_path);
+    auto config_dir = config_path.parent_path();
+
     ifstream config_file(conf_file_path);
     if(config_file.fail()) {
         cerr << "can't open config file: " << conf_file_path << endl;
         return -1;
     }
 
-    ofstream out_file(out_path_pref + "_patched.bin", ios::binary | ios::out);
+    string out_file_path = out_path_pref;
+    if(fs::is_directory(out_path_pref)) {
+        out_file_path += "/_patched.bin";
+    }
+
+    ofstream out_file(out_file_path, ios::binary | ios::out);
 
     string content((istreambuf_iterator<char>(config_file)), istreambuf_iterator<char>());
     Document document;
     document.Parse(content.c_str());
 
     Value& v = document["header"];
-    string header_file_path = v.GetString();
+    string header_file_path = config_dir.string() + "/" + v.GetString();
     ifstream header_file(header_file_path, ios::binary | std::ios::ate);
     if(header_file.fail()) {
         cerr << "Can't open header " << header_file_path << endl;
@@ -363,7 +381,7 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
     string vbf_header((istreambuf_iterator<char>(header_file)), istreambuf_iterator<char>());
     size_t vbf_header_len = vbf_header.length();
 
-    auto packSection = [&out_file, &document](const char* section_name){
+    auto packSection = [&out_file, &document, &config_dir](const char* section_name){
         char zero =0;
         const Value& section = document[section_name];
         assert(section.IsArray());
@@ -372,7 +390,7 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
 
             auto sec_obj = section[i].GetObject();
             const Value& file = sec_obj["file"];
-            string file_path = file.GetString();
+            string file_path =  config_dir.string() + "/" + file.GetString();
             size_t actual_sz = sec_obj["actual-size"].GetInt();
             size_t real_sz = sec_obj["padded-size"].GetInt();
 
@@ -380,7 +398,7 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
                 cerr << "actual_sz greater than padded size"<< endl;
                 return -1;
             } else if(actual_sz != real_sz) {
-                cout << "file will be zero padded to size " << real_sz << "with "
+                cerr << "file will be zero padded to size " << real_sz << " with "
                      << real_sz - actual_sz << " bytes" << endl;
             }
 
@@ -424,12 +442,14 @@ int main(int argc, char **argv)
 
         bool save = false;
         bool pack = false;
+        bool verbose = false;
 
         cxxopts::Options options("imgparcer", "Ford IPC image excructur");
         options.add_options()
                 ("u,unpack","Save extracted data to separate file", cxxopts::value<bool>(save))
                 ("p,pack","Pack image section", cxxopts::value<bool>(pack))
                 ("i,input","Input file", cxxopts::value<string>())
+                ("v,verbose","Show section content", cxxopts::value<bool>(verbose))
                 ("o,output","Output directory", cxxopts::value<string>()->default_value(""))
                 ("h,help","Print help");
 
@@ -437,28 +457,34 @@ int main(int argc, char **argv)
         auto result = options.parse(argc, argv);
 
         if(result.arguments().empty() || result.count("help")){
-            cout << options.help() << std::endl;
-            return 0;
+            cerr << options.help() << endl;
+            return -1;
         }
 
         if(!result.count("input")){
-            cout << "Please, specify input file" << std::endl;
-            return 0;
+            cerr << "please, specify input file" << endl;
+            return -1;
         }
 
         if(pack) {
             if(packPicturesSection(result["input"].as<string>(), result["output"].as<string>()))
             {
-                return 0;
+                return -1;
             }
+        } else if(save) {
+            //check output dir
+            auto s = fs::status(result["output"].as<string>());
+            if(!fs::is_directory(s)) {
+                cerr << "output dir not exists" << endl;
+                return -1;
+            }
+            parsePicturesSection(result["input"].as<string>(), result["output"].as<string>(), verbose, save);
         } else {
-            if(parsePicturesSection(result["input"].as<string>(), result["output"].as<string>(), true, save)) {
-                return 0;
-            }
+            parsePicturesSection(result["input"].as<string>(), "", true, false);
         }
 
     } catch (const cxxopts::OptionException& e){
-        cout << "error parsing options: " << e.what() << endl;
+        cerr << "error parsing options: " << e.what() << endl;
     }
 
     return 0;

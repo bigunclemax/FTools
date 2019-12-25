@@ -173,6 +173,9 @@ int VbfFile::Export(const string& out_dir) {
 
 int VbfFile::Import(string conf_file_path) {
 
+    std::filesystem::path config_path(conf_file_path);
+    auto config_dir = config_path.parent_path();
+
     ifstream config_file(conf_file_path);
     if(config_file.fail()) {
         return -1;
@@ -183,7 +186,7 @@ int VbfFile::Import(string conf_file_path) {
     document.Parse(content.c_str());
 
     Value& v = document["header"];
-    string header_file_path = v.GetString();
+    string header_file_path = config_dir.string() + "/" + v.GetString();
     ifstream header_file(header_file_path);
     if(header_file.fail()) {
         cerr << "Can't open header " << header_file_path << endl;
@@ -208,7 +211,7 @@ int VbfFile::Import(string conf_file_path) {
             string address_str = address.GetString();
             vbf_section_addr = strtoul(address_str.c_str(), nullptr, 16);
 
-            string vbf_section_path = file.GetString();
+            string vbf_section_path = config_dir.string() + "/" +file.GetString();
             ifstream vbf_section(vbf_section_path, ios::binary | std::ios::ate);
             if(vbf_section.fail()) {
                 cerr << "Can't open vbf section " << vbf_section_path << endl;

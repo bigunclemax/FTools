@@ -2,8 +2,10 @@
 
 set -euo pipefail
 
+export PATH=$PATH:../VbfEditor/bin:../EifViewer/bin:../ImgSectionParser/bin
+
 function extract_eifs() {
-  local zip_dir=$1
+  local zip_dir=$1/zip
   local eifs_dir=$1/eifs
   local bmp_dir=$1/bmp
 
@@ -12,7 +14,7 @@ function extract_eifs() {
 
   for z in $zip_dir/*.zip ; do
     if [ -f $z ]; then
-      unzip $z -d $eifs_dir
+      unzip -q $z -d $eifs_dir
     fi
   done
 
