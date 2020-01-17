@@ -9,4 +9,4 @@ include_directories(../cxxopts/include)
 include_directories(../CRCpp/inc)
 include_directories(./EasyBMP)
 
-install(TARGETS eifviewer DESTINATION "bin")
+install(TARGETS eifviewer)

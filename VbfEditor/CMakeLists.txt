@@ -23,6 +23,8 @@ include_directories(../cxxopts/include)
 include_directories(../CRCpp/inc)
 
 add_executable(vbfeditor main.cpp VbfFile.cpp VbfFile.h)
-#target_link_libraries(vbfeditor ws2_32)
+if(WIN32)
+    target_link_libraries(vbfeditor ws2_32)
+endif()
 
-install(TARGETS vbfeditor DESTINATION "../bin")
+install(TARGETS vbfeditor)

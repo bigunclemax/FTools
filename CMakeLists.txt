@@ -14,5 +14,4 @@ add_subdirectory(EifViewer)
 add_subdirectory(ImgSectionParser)
 add_subdirectory(VbfEditor)
 
-#install(TARGETS vbfedit DESTINATION "../bin")
-#install(TARGETS imgparcer DESTINATION "../bin")
+set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
