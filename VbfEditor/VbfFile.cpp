@@ -37,7 +37,7 @@ int VbfFile::OpenFile(string file_path) {
     }
     vbf_file.close();
 
-    m_file_name = std::filesystem::path(file_path).filename();
+    m_file_name = std::filesystem::path(file_path).filename().string();
     m_file_length = file_buff.size();
 
     cout << "Parse VBF file " << m_file_name << " Size: " << m_file_length << " bytes" << endl;

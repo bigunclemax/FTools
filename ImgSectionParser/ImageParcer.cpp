@@ -236,8 +236,8 @@ int parsePicturesSection(const string& file_path,
                 stringstream _addr_hex;
                 _addr_hex << "0x" << std::hex << relative_offset;
                 section_obj.AddMember("relative-offset", Value(_addr_hex.str().c_str(), allocator), allocator);
-                section_obj.AddMember("actual-size", actual_sz, allocator);
-                section_obj.AddMember("padded-size", padded_sz, allocator);
+                section_obj.AddMember("actual-size", Value().SetUint64(actual_sz), allocator);
+                section_obj.AddMember("padded-size", Value().SetUint64(padded_sz), allocator);
                 section_obj.AddMember("width", zip_header.width, allocator);
                 section_obj.AddMember("height", zip_header.height, allocator);
                 section_obj.AddMember("type", Value(ToString(static_cast<image_type>(zip_header.img_type)), allocator), allocator);
@@ -317,8 +317,8 @@ int parsePicturesSection(const string& file_path,
                 stringstream _addr_hex;
                 _addr_hex << "0x" << std::hex << relative_offset;
                 section_obj.AddMember("relative-offset", Value(_addr_hex.str().c_str(), allocator), allocator);
-                section_obj.AddMember("actual-size", actual_sz, allocator);
-                section_obj.AddMember("padded-size", padded_sz, allocator);
+                section_obj.AddMember("actual-size", Value().SetUint64(actual_sz), allocator);
+                section_obj.AddMember("padded-size", Value().SetUint64(padded_sz), allocator);
             }
             ttf_sections.PushBack(section_obj, allocator);
         }
