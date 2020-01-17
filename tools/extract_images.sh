@@ -37,12 +37,13 @@ function unpack_images() {
 }
 
 function unpack_vbf() {
-  local vbf=$1
-  local vbf_dir=${vbf}_unpacked
-  mkdir -p ./${vbf_dir}
-  vbfeditor -u ${vbf} -o ${vbf_dir}/
+  local vbf_path=$1
+  local vbf_name=$(basename $1)
+  local vbf_dir=${vbf_path}_unpacked
+  mkdir -p "./${vbf_dir}"
+  vbfeditor -u "${vbf_path}" -o "${vbf_dir}/"
 
-  unpack_images $(echo ${vbf_dir}/${vbf}_section_1400000_*)
+  unpack_images $(echo ${vbf_dir}/${vbf_name}_section_1400000_*)
 }
 
 if [ "$#" -ne 1 ]; then
