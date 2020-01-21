@@ -17,6 +17,7 @@
 
 using namespace std;
 using namespace rapidjson;
+namespace fs = std::filesystem;
 
 int VbfFile::OpenFile(string file_path) {
 
@@ -37,7 +38,7 @@ int VbfFile::OpenFile(string file_path) {
     }
     vbf_file.close();
 
-    m_file_name = std::filesystem::path(file_path).filename().string();
+    m_file_name = fs::path(file_path).filename().string();
     m_file_length = file_buff.size();
 
     cout << "Parse VBF file " << m_file_name << " Size: " << m_file_length << " bytes" << endl;
@@ -173,7 +174,7 @@ int VbfFile::Export(const string& out_dir) {
 
 int VbfFile::Import(string conf_file_path) {
 
-    std::filesystem::path config_path(conf_file_path);
+    fs::path config_path((fs::absolute(conf_file_path)));
     auto config_dir = config_path.parent_path();
 
     ifstream config_file(conf_file_path);
@@ -187,7 +188,7 @@ int VbfFile::Import(string conf_file_path) {
 
     Value& v = document["header"];
     string header_file_path = config_dir.string() + "/" + v.GetString();
-    ifstream header_file(header_file_path);
+    ifstream header_file(header_file_path, ios::binary);
     if(header_file.fail()) {
         cerr << "Can't open header " << header_file_path << endl;
         return -1;
