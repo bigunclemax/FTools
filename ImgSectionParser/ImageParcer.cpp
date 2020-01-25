@@ -76,7 +76,9 @@ auto SaveToFile(const string& file_name, char *data_ptr, int data_len) {
 int parsePicturesSection(const string& file_path,
                          const string& out_path_dir, bool verbose, bool need_extract)
 {
+    fs::path out_path(out_path_dir);
 
+    auto input_filename = fs::path(file_path).filename().string();
     ifstream vbf_file(file_path, ios::binary | ios::ate);
     if(!vbf_file){
         cerr << "Input file not found" << endl;
@@ -118,8 +120,8 @@ int parsePicturesSection(const string& file_path,
     cerr << "data offset is 0x" << hex << read_idx << resetiosflags(ios::hex) << endl;
 
     if(need_extract) {
-        fs::create_directory(out_path_dir + "/zip");
-        fs::create_directory(out_path_dir + "/ttf");
+        fs::create_directory(out_path / "zip");
+        fs::create_directory(out_path / "ttf");
     }
 
     Document document;
@@ -128,13 +130,9 @@ int parsePicturesSection(const string& file_path,
     Value img_sections(kArrayType);
     Value ttf_sections(kArrayType);
     if(need_extract) {
-        stringstream str_buff;
-        str_buff << "_header.bin";
-
-        SaveToFile(out_path_dir + str_buff.str(),
-                   reinterpret_cast<char *>(file_buff.data()), read_idx);
-
-        document.AddMember("header", Value(str_buff.str().c_str(), allocator), allocator);
+        auto out_file_str = (input_filename + "_header.bin");
+        SaveToFile((out_path / out_file_str).string(), reinterpret_cast<char *>(file_buff.data()), read_idx);
+        document.AddMember("header", Value(out_file_str.c_str(), allocator), allocator);
     }
 
     if(verbose) {
@@ -172,7 +170,7 @@ int parsePicturesSection(const string& file_path,
             cerr << "zip header name not contain actual size!" << endl;
             return -1;
         }
-        auto actual_sz = stoul(m[1].str().c_str(), nullptr, 10);
+        auto actual_sz = stoul(m[1].str(), nullptr, 10);
         auto _addr = stoul(&zip_header.fileName[5], nullptr, 16);
 #if 0
         //get real size
@@ -224,15 +222,15 @@ int parsePicturesSection(const string& file_path,
         if(need_extract) {
 
             stringstream str_buff;
-            str_buff << "zip/" << i << ".zip";
+            str_buff << i << ".zip";
             string file_name = str_buff.str();
 
-            SaveToFile(out_path_dir + "/" + file_name,
+            SaveToFile((out_path / "zip" / file_name).string(),
                        reinterpret_cast<char *>(&file_buff[relative_offset]), actual_sz);
 
             Value section_obj(kObjectType);
             {
-                section_obj.AddMember("file", Value(file_name.c_str(), allocator), allocator);
+                section_obj.AddMember("file", Value(("zip/" + file_name).c_str(), allocator), allocator);
                 stringstream _addr_hex;
                 _addr_hex << "0x" << std::hex << relative_offset;
                 section_obj.AddMember("relative-offset", Value(_addr_hex.str().c_str(), allocator), allocator);
@@ -273,7 +271,7 @@ int parsePicturesSection(const string& file_path,
             cerr << "ttf header name not contain actual size!" << endl;
             return -1;
         }
-        auto actual_sz = stoul(m[1].str().c_str(), nullptr, 10);
+        auto actual_sz = stoul(m[1].str(), nullptr, 10);
         auto _addr = stoul(&ttf_header.fileName[5], nullptr, 16);
 #if 0
         //get real size
@@ -305,15 +303,15 @@ int parsePicturesSection(const string& file_path,
         if(need_extract) {
 
             stringstream str_buff;
-            str_buff << "ttf/" << i << ".ttf";
+            str_buff << i << ".ttf";
             string file_name = str_buff.str();
 
-            SaveToFile(out_path_dir + "/" + file_name,
+            SaveToFile((out_path / "ttf" / file_name).string(),
                        reinterpret_cast<char *>(&file_buff[relative_offset]), actual_sz);
 
             Value section_obj(kObjectType);
             {
-                section_obj.AddMember("file", Value(file_name.c_str(), allocator), allocator);
+                section_obj.AddMember("file", Value(("ttf/" + file_name).c_str(), allocator), allocator);
                 stringstream _addr_hex;
                 _addr_hex << "0x" << std::hex << relative_offset;
                 section_obj.AddMember("relative-offset", Value(_addr_hex.str().c_str(), allocator), allocator);
@@ -331,7 +329,7 @@ int parsePicturesSection(const string& file_path,
         StringBuffer buffer;
         PrettyWriter<StringBuffer> writer(buffer);
         document.Accept(writer);
-        ofstream config(out_path_dir + "_config.json", ios::out);
+        ofstream config(out_path / (input_filename + "_config.json"), ios::out);
         config.write(buffer.GetString(), buffer.GetSize());
     }
 
@@ -340,7 +338,7 @@ int parsePicturesSection(const string& file_path,
 
 int packPicturesSection(const string& conf_file_path, const string& out_path_pref)
 {
-    fs::path config_path(conf_file_path);
+    fs::path config_path(fs::absolute(conf_file_path));
     auto config_dir = config_path.parent_path();
 
     ifstream config_file(conf_file_path);
@@ -349,12 +347,13 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
         return -1;
     }
 
-    string out_file_path = out_path_pref;
-    if(fs::is_directory(out_path_pref)) {
-        out_file_path += "/_patched.bin";
+    fs::path out_path(fs::absolute(out_path_pref));
+    if(fs::is_directory(fs::status(out_path))) {
+        out_path /= config_path.filename();
+        out_path += "_patched.bin";
     }
 
-    ofstream out_file(out_file_path, ios::binary | ios::out);
+    ofstream out_file(out_path.string(), ios::binary | ios::out);
 
     string content((istreambuf_iterator<char>(config_file)), istreambuf_iterator<char>());
     Document document;
@@ -466,21 +465,31 @@ int main(int argc, char **argv)
             return -1;
         }
 
-        if(pack) {
-            if(packPicturesSection(result["input"].as<string>(), result["output"].as<string>()))
-            {
-                return -1;
-            }
-        } else if(save) {
-            //check output dir
-            auto s = fs::status(result["output"].as<string>());
+        string out_path=result["output"].as<string>();
+        if(out_path.empty()) {
+            out_path = fs::current_path().string();
+        } else {
+            auto s = fs::status(out_path);
             if(!fs::is_directory(s)) {
                 cerr << "output dir not exists" << endl;
                 return -1;
             }
-            parsePicturesSection(result["input"].as<string>(), result["output"].as<string>(), verbose, save);
+        }
+
+        if(pack) {
+            if(packPicturesSection(result["input"].as<string>(), out_path))
+            {
+                cerr << "pack pictures section error" << endl;
+                return -1;
+            }
         } else {
-            parsePicturesSection(result["input"].as<string>(), "", true, false);
+            if(!save)
+                verbose = true;
+
+            if(parsePicturesSection(result["input"].as<string>(), out_path, verbose, save)) {
+                cerr << "parse pictures section error" << endl;
+                return -1;
+            }
         }
 
     } catch (const cxxopts::OptionException& e){
