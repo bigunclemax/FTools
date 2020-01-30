@@ -34,17 +34,6 @@ struct ttf_file {
     char fileName[32];
 };
 
-#if 0
-struct extracted_item {
-    uint32_t unk1;
-    uint32_t unk2;
-    uint8_t  unk3;
-    array<char, 32> ascii_string;
-    uint32_t size;
-    vector<uint8_t> data;
-};
-#endif
-
 enum image_type : uint8_t {
     EIF_TYPE_MONOCHROME = 0x04,
     EIF_TYPE_MULTICOLOR = 0x07,
@@ -61,7 +50,6 @@ inline const char* ToString(image_type v)
         default:      return "[Unknown] ";
     }
 }
-//vector<struct extracted_item>& extracted_items
 
 auto SaveToFile(const string& file_name, char *data_ptr, int data_len) {
     ofstream out_file(file_name, ios::out | ios::binary);
@@ -71,6 +59,15 @@ auto SaveToFile(const string& file_name, char *data_ptr, int data_len) {
         out_file.write(data_ptr, data_len);
     }
     out_file.close();
+}
+
+long find_entry_point(const vector<uint8_t>& in_data) {
+    vector<uint8_t> v2 = {'~','m','e','m'};
+    auto res = search(begin(in_data), end(in_data), begin(v2), end(v2));
+    if(res == end(in_data)) {
+        throw runtime_error("packed resources not found");
+    }
+    return res - in_data.begin() - 13; // 4b - width, 4b - height, 1b -type, 4b - total items
 }
 
 int parsePicturesSection(const string& file_path,
@@ -97,7 +94,7 @@ int parsePicturesSection(const string& file_path,
     vbf_file.close();
     cerr << "Read 0x" << std::hex << pos << " bytes" << resetiosflags(ios::hex) << endl;
 
-    auto read_idx = START_ZIP_SECTION;
+    auto read_idx = find_entry_point(file_buff);
     // parse Zip headers block
     uint32_t itemsCount = *reinterpret_cast<uint32_t *>(&file_buff[read_idx]);
     read_idx += sizeof(uint32_t);
