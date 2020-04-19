@@ -13,5 +13,6 @@ set(CMAKE_CXX_STANDARD 17)
 add_subdirectory(EifViewer)
 add_subdirectory(ImgSectionParser)
 add_subdirectory(VbfEditor)
+add_subdirectory(ZipRepacker)
 
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
