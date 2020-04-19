@@ -187,17 +187,19 @@ int parsePicturesSection(const string& file_path,
         auto remainder = actual_sz % 4;
         auto padded_sz = actual_sz + ((remainder) ? (4 - remainder) : 0);
 
+        // get zipped file name
+        mz_zip_archive zip_archive;
+        memset(&zip_archive, 0, sizeof(zip_archive));
+        if (!mz_zip_reader_init_mem(&zip_archive, reinterpret_cast<const void *>(&file_buff[relative_offset]),
+                                    actual_sz, 0)) {
+            cerr << "Can't initialize archive";
+            return -1;
+        }
+        char _fileName[32];
+        mz_zip_reader_get_filename(&zip_archive, 0, _fileName, 32);
+        mz_zip_reader_end(&zip_archive);
+
         if(verbose) {
-            mz_zip_archive zip_archive;
-            memset(&zip_archive, 0, sizeof(zip_archive));
-            if (!mz_zip_reader_init_mem(&zip_archive, reinterpret_cast<const void *>(&file_buff[relative_offset]),
-                                        actual_sz, 0)) {
-                cerr << "Can't initialize archive";
-                return -1;
-            }
-            char _fileName[32];
-            mz_zip_reader_get_filename(&zip_archive, 0, _fileName, 32);
-            mz_zip_reader_end(&zip_archive);
 
             cout << resetiosflags(ios::hex) << std::setfill(' ')
                 << setw(5) << i
@@ -236,6 +238,7 @@ int parsePicturesSection(const string& file_path,
                 section_obj.AddMember("width", zip_header.width, allocator);
                 section_obj.AddMember("height", zip_header.height, allocator);
                 section_obj.AddMember("type", Value(ToString(static_cast<image_type>(zip_header.img_type)), allocator), allocator);
+                section_obj.AddMember("content", Value(_fileName, allocator), allocator);
             }
             img_sections.PushBack(section_obj, allocator);
         }
