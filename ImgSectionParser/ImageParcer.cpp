@@ -469,8 +469,8 @@ int main(int argc, char **argv)
         if(out_path.empty()) {
             out_path = fs::current_path().string();
         } else {
-            auto s = fs::status(out_path);
-            if(!fs::is_directory(s)) {
+            fs::path p_out(out_path);
+            if(!fs::is_directory(p_out) && !fs::is_directory(p_out.parent_path())) {
                 cerr << "output dir not exists" << endl;
                 return -1;
             }
