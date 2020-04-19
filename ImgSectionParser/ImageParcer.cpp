@@ -92,7 +92,7 @@ int parsePicturesSection(const string& file_path,
         return -1;
     }
     vbf_file.close();
-    cerr << "Read 0x" << std::hex << pos << " bytes" << resetiosflags(ios::hex) << endl;
+    cout << "Read 0x" << std::hex << pos << " bytes" << resetiosflags(ios::hex) << endl;
 
     auto read_idx = find_entry_point(file_buff);
     // parse Zip headers block
@@ -101,7 +101,7 @@ int parsePicturesSection(const string& file_path,
     auto zip_headers_offset = &file_buff[read_idx];
     read_idx += sizeof(struct zip_file) * itemsCount;
     auto zip_count = itemsCount;
-    cerr << "ZIP Items count " << itemsCount << endl;
+    cout << "ZIP Items count " << itemsCount << endl;
 
     // parse TTF headers block
     itemsCount = *reinterpret_cast<uint32_t *>(&file_buff[read_idx]);
@@ -109,12 +109,12 @@ int parsePicturesSection(const string& file_path,
     auto ttf_headers_offset = &file_buff[read_idx];
     read_idx += sizeof(struct ttf_file) * itemsCount;
     auto ttf_count = itemsCount;
-    cerr << "TTF Items count " << itemsCount << endl;
+    cout << "TTF Items count " << itemsCount << endl;
 
     auto magicInt =  *reinterpret_cast<uint32_t *>(&file_buff[read_idx]);
     read_idx += sizeof(uint32_t);
-    cerr << "unknown num 0x" << hex << magicInt << resetiosflags(ios::hex) << endl;
-    cerr << "data offset is 0x" << hex << read_idx << resetiosflags(ios::hex) << endl;
+    cout << "unknown num 0x" << hex << magicInt << resetiosflags(ios::hex) << endl;
+    cout << "data offset is 0x" << hex << read_idx << resetiosflags(ios::hex) << endl;
 
     if(need_extract) {
         fs::create_directory(out_path / "zip");
@@ -133,12 +133,12 @@ int parsePicturesSection(const string& file_path,
     }
 
     if(verbose) {
-        cerr
+        cout
         << "#####################" << endl
         << "#### ZIP section ####" << endl
         << "#####################" << endl;
 
-        cerr    << "   # "
+        cout    << "   # "
                 << " | "
                 << "          ASCII string          "
                 << " | "
@@ -199,7 +199,7 @@ int parsePicturesSection(const string& file_path,
             mz_zip_reader_get_filename(&zip_archive, 0, _fileName, 32);
             mz_zip_reader_end(&zip_archive);
 
-            cerr << resetiosflags(ios::hex) << std::setfill(' ')
+            cout << resetiosflags(ios::hex) << std::setfill(' ')
                 << setw(5) << i
                 << " | "
                 << setiosflags(ios::left) << setw(32) << zip_header.fileName << resetiosflags(ios::left)
@@ -242,12 +242,12 @@ int parsePicturesSection(const string& file_path,
     }
 
     if(verbose) {
-        cerr
+        cout
                 << "#####################" << endl
                 << "#### TTF section ####" << endl
                 << "#####################" << endl;
 
-        cerr << "   # "
+        cout << "   # "
              << " | "
              << "          ASCII string          "
              << " | "
@@ -288,7 +288,7 @@ int parsePicturesSection(const string& file_path,
         auto padded_sz = actual_sz + ((remainder) ? (4 - remainder) : 0);
 
         if(verbose) {
-            cerr << resetiosflags(ios::hex)  << std::setfill(' ')
+            cout << resetiosflags(ios::hex)  << std::setfill(' ')
                  << setw(5) << i
                  << " | "
                  << setiosflags(ios::left) << setw(32) << ttf_header.fileName << resetiosflags(ios::left)
