@@ -37,7 +37,8 @@ struct ttf_file {
 enum image_type : uint8_t {
     EIF_TYPE_MONOCHROME = 0x04,
     EIF_TYPE_MULTICOLOR = 0x07,
-    EIF_TYPE_SUPERCOLOR = 0x0E
+    EIF_TYPE_SUPERCOLOR = 0x0E,
+    EIF_TYPE_UNKNOWN = 0x00,
 };
 
 inline const char* ToString(image_type v)
@@ -49,6 +50,19 @@ inline const char* ToString(image_type v)
         case EIF_TYPE_SUPERCOLOR: return "SUPERCOLOR";
         default:      return "[Unknown] ";
     }
+}
+
+inline image_type FromString(string type)
+{
+    if(type == "MONOCHROME") {
+        return EIF_TYPE_MONOCHROME;
+    } else if (type == "MULTICOLOR") {
+        return EIF_TYPE_MULTICOLOR;
+    }  else if (type == "SUPERCOLOR") {
+        return EIF_TYPE_SUPERCOLOR;
+    }
+
+    return EIF_TYPE_UNKNOWN;
 }
 
 auto SaveToFile(const string& file_name, char *data_ptr, int data_len) {
@@ -94,7 +108,8 @@ int parsePicturesSection(const string& file_path,
     vbf_file.close();
     cout << "Read 0x" << std::hex << pos << " bytes" << resetiosflags(ios::hex) << endl;
 
-    auto read_idx = find_entry_point(file_buff);
+    auto entry_point = find_entry_point(file_buff);
+    auto read_idx = entry_point;
     // parse Zip headers block
     uint32_t itemsCount = *reinterpret_cast<uint32_t *>(&file_buff[read_idx]);
     read_idx += sizeof(uint32_t);
@@ -128,8 +143,9 @@ int parsePicturesSection(const string& file_path,
     Value ttf_sections(kArrayType);
     if(need_extract) {
         auto out_file_str = (input_filename + "_header.bin");
-        SaveToFile((out_path / out_file_str).string(), reinterpret_cast<char *>(file_buff.data()), read_idx);
+        SaveToFile((out_path / out_file_str).string(), reinterpret_cast<char *>(file_buff.data()), entry_point);
         document.AddMember("header", Value(out_file_str.c_str(), allocator), allocator);
+        document.AddMember("unknown-int", Value().SetUint64(magicInt), allocator);
     }
 
     if(verbose) {
@@ -357,7 +373,10 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
 
     string content((istreambuf_iterator<char>(config_file)), istreambuf_iterator<char>());
     Document document;
-    document.Parse(content.c_str());
+    if(document.Parse(content.c_str()).HasParseError()) {
+        cerr << "File '" << conf_file_path << "' is not a valid JSON" << endl;
+        return -1;
+    }
 
     Value& v = document["header"];
     string header_file_path = config_dir.string() + "/" + v.GetString();
@@ -377,12 +396,75 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
 
     out_file.write(reinterpret_cast<char *>(header_data.data()), header_size);
 
-    string vbf_header((istreambuf_iterator<char>(header_file)), istreambuf_iterator<char>());
-    size_t vbf_header_len = vbf_header.length();
-
-    auto packSection = [&out_file, &document, &config_dir](const char* section_name){
-        char zero =0;
+    //calc initial data offset
+    unsigned data_offset = 0x02400000 + header_size;
+    auto getSectionSz = [&document](const char* section_name) {
         const Value& section = document[section_name];
+        return section.Size();
+    };
+
+    uint32_t zip_count = getSectionSz("image-sections");
+    uint32_t ttf_count = getSectionSz("ttf-sections");
+
+    auto packZipHeaders = [&out_file, &document, &data_offset]() {
+
+        const Value &section = document["image-sections"]; //TODO: check if section exists in json
+        assert(section.IsArray());
+
+        for (SizeType i = 0; i < section.Size(); ++i) {
+
+            auto sec_obj = section[i].GetObject();
+
+            uint32_t actual_sz = sec_obj["actual-size"].GetInt();
+            uint32_t width = sec_obj["width"].GetInt();
+            uint32_t height = sec_obj["height"].GetInt();
+            string type_str = sec_obj["type"].GetString();
+
+            //padding size
+            auto remainder = actual_sz % 4;
+            uint32_t padded_sz = actual_sz + ((remainder) ? (4 - remainder) : 0);
+
+            //create header
+            zip_file item_h = {};
+            item_h.img_type = FromString(type_str);
+            item_h.height = height;
+            item_h.width = width;
+            sprintf(item_h.fileName, "~mem/0x%08X-%10d.zip", data_offset, actual_sz);
+
+            out_file.write(reinterpret_cast<char *>(&item_h), sizeof(item_h));
+
+            data_offset += padded_sz;
+        }
+    };
+
+    auto packTtfHeaders = [&out_file, &document, &data_offset]() {
+
+        const Value &section = document["ttf-sections"]; //TODO: check if section exists in json
+        assert(section.IsArray());
+
+        for (SizeType i = 0; i < section.Size(); ++i) {
+
+            auto sec_obj = section[i].GetObject();
+
+            uint32_t actual_sz = sec_obj["actual-size"].GetInt();
+
+            //padding size (my be unnecessary for ttf)
+            auto remainder = actual_sz % 4;
+            uint32_t padded_sz = actual_sz + ((remainder) ? (4 - remainder) : 0);
+
+            //create header
+            ttf_file item_h = {};
+            sprintf(item_h.fileName, "~mem/0x%08X-%10d.ttf", data_offset, actual_sz);
+
+            out_file.write(reinterpret_cast<char *>(&item_h), sizeof(item_h));
+
+            data_offset += padded_sz;
+        }
+    };
+
+    auto packSection = [&out_file, &document, &config_dir, &data_offset](const char* section_name){
+        char zero =0;
+        const Value& section = document[section_name]; //TODO: check if section exists in json
         assert(section.IsArray());
 
         for (SizeType i = 0; i < section.Size(); ++i) {
@@ -391,6 +473,8 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
             const Value& file = sec_obj["file"];
             string file_path =  config_dir.string() + "/" + file.GetString();
             size_t actual_sz = sec_obj["actual-size"].GetInt();
+#if 0
+            //            deprecated
             size_t real_sz = sec_obj["padded-size"].GetInt();
 
             if(actual_sz > real_sz) {
@@ -400,7 +484,7 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
                 cerr << "file will be zero padded to size " << real_sz << " with "
                      << real_sz - actual_sz << " bytes" << endl;
             }
-
+#endif
             ifstream img_file(file_path, ios::binary | std::ios::ate);
             if(img_file.fail()) {
                 cerr << "Can't open image file " << file_path << endl;
@@ -422,11 +506,29 @@ int packPicturesSection(const string& conf_file_path, const string& out_path_pre
             img_file.close();
 
             out_file.write(reinterpret_cast<char *>(img_data.data()), img_size);
-            for(int j=actual_sz; j < real_sz; ++j)
+
+            //padding size
+            auto remainder = actual_sz % 4;
+            uint32_t padded_sz = actual_sz + ((remainder) ? (4 - remainder) : 0);
+
+            for(int j=actual_sz; j < padded_sz; ++j)
                 out_file.write(&zero, 1);
         }
         return 0;
     };
+
+    data_offset += zip_count * sizeof(zip_file) + sizeof(uint32_t);
+    data_offset += ttf_count * sizeof(ttf_file) + sizeof(uint32_t);
+    data_offset += sizeof(uint32_t); // + magic int
+
+    out_file.write(reinterpret_cast<char *>(&zip_count), sizeof(uint32_t));
+    packZipHeaders();
+
+    out_file.write(reinterpret_cast<char *>(&ttf_count), sizeof(uint32_t));
+    packTtfHeaders();
+
+    uint32_t magicInt = document["unknown-int"].GetInt();
+    out_file.write((char *)&magicInt, sizeof(int));
 
     packSection("image-sections");
     packSection("ttf-sections");
