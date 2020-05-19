@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <utility>
 #include <CRC.h>
+#include <sstream>
 #include "VbfFile.h"
 
 #include <rapidjson/document.h>
