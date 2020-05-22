@@ -29,10 +29,12 @@ class VbfFile {
     bool m_is_open = false;
 public:
     [[nodiscard]] bool IsOpen() const { return m_is_open;};
-    int OpenFile (std::string file_path);
+    int OpenFile (const std::string& file_path);
     int SaveToFile (std::string file_path);
     int Export(const std::string& out_dir);
-    int Import(std::string descr_file);
+    int Import(const std::string& conf_file_path);
+
+    int GetSectionRaw(uint section_idx, std::vector<uint8_t> section_data);
 };
 
 

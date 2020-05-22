@@ -20,7 +20,7 @@ using namespace std;
 using namespace rapidjson;
 namespace fs = std::filesystem;
 
-int VbfFile::OpenFile(string file_path) {
+int VbfFile::OpenFile(const string& file_path) {
 
     ifstream vbf_file(file_path, ios::binary | ios::ate);
     if(vbf_file.fail()) {
@@ -173,7 +173,7 @@ int VbfFile::Export(const string& out_dir) {
     return 0;
 }
 
-int VbfFile::Import(string conf_file_path) {
+int VbfFile::Import(const string& conf_file_path) {
 
     fs::path config_path((fs::absolute(conf_file_path)));
     auto config_dir = config_path.parent_path();
@@ -195,7 +195,6 @@ int VbfFile::Import(string conf_file_path) {
         return -1;
     }
     string vbf_header((istreambuf_iterator<char>(header_file)), istreambuf_iterator<char>());
-    size_t vbf_header_len = vbf_header.length();
     //TODO: validate header
 
     m_content_size =0;
@@ -208,10 +207,8 @@ int VbfFile::Import(string conf_file_path) {
             const Value& file = sec_obj["file"];
             const Value& address = sec_obj["address"];
 
-            uint32_t vbf_section_addr = 0;
-
             string address_str = address.GetString();
-            vbf_section_addr = strtoul(address_str.c_str(), nullptr, 16);
+            uint32_t vbf_section_addr = strtoul(address_str.c_str(), nullptr, 16);
 
             string vbf_section_path = config_dir.string() + "/" +file.GetString();
             ifstream vbf_section(vbf_section_path, ios::binary | std::ios::ate);
@@ -298,7 +295,6 @@ int VbfFile::SaveToFile(std::string file_path) {
 
     outfile.write(m_ascii_header.c_str(), m_ascii_header.length());
 
-    uint32_t crc32 = 0;
     for(auto section :m_bin_sections)
     {
         uint32_t length_be = htonl(*reinterpret_cast<uint32_t *>(&section->length));
@@ -310,6 +306,19 @@ int VbfFile::SaveToFile(std::string file_path) {
         outfile.write(reinterpret_cast<char *>(section->data.data()), section->data.size());
         outfile.write(reinterpret_cast<char *>(&crc16_be), sizeof(crc16_be));
     }
+
+    return 0;
+}
+
+int VbfFile::GetSectionRaw(uint section_idx, std::vector<uint8_t> section_data) {
+
+    if(section_idx >= m_bin_sections.size()) {
+        return -1;
+    }
+
+    auto sections_it = m_bin_sections.begin();
+    std::advance(sections_it, section_idx);
+    section_data = (*sections_it)->data;
 
     return 0;
 }
