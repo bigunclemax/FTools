@@ -310,7 +310,7 @@ int VbfFile::SaveToFile(std::string file_path) {
     return 0;
 }
 
-int VbfFile::GetSectionRaw(uint section_idx, std::vector<uint8_t> section_data) {
+int VbfFile::GetSectionRaw(uint8_t section_idx, std::vector<uint8_t> section_data) {
 
     if(section_idx >= m_bin_sections.size()) {
         return -1;
