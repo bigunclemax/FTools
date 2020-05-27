@@ -34,7 +34,8 @@ public:
     int Export(const std::string& out_dir);
     int Import(const std::string& conf_file_path);
 
-    int GetSectionRaw(uint8_t section_idx, std::vector<uint8_t> section_data);
+    int GetSectionRaw(uint8_t section_idx, std::vector<uint8_t>& section_data);
+    int ReplaceSectionRaw(uint8_t section_idx,const std::vector<uint8_t>& section_data);
 };
 
 

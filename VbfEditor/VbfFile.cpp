@@ -310,7 +310,7 @@ int VbfFile::SaveToFile(std::string file_path) {
     return 0;
 }
 
-int VbfFile::GetSectionRaw(uint8_t section_idx, std::vector<uint8_t> section_data) {
+int VbfFile::GetSectionRaw(uint8_t section_idx, std::vector<uint8_t>& section_data) {
 
     if(section_idx >= m_bin_sections.size()) {
         return -1;
@@ -319,6 +319,21 @@ int VbfFile::GetSectionRaw(uint8_t section_idx, std::vector<uint8_t> section_dat
     auto sections_it = m_bin_sections.begin();
     std::advance(sections_it, section_idx);
     section_data = (*sections_it)->data;
+
+    return 0;
+}
+
+int VbfFile::ReplaceSectionRaw(uint8_t section_idx, const vector<uint8_t> &section_data) {
+
+    if(section_idx >= m_bin_sections.size()) {
+        return -1;
+    }
+
+    auto sections_it = m_bin_sections.begin();
+    std::advance(sections_it, section_idx);
+    (*sections_it)->data = section_data;
+    (*sections_it)->length = section_data.size();
+    (*sections_it)->crc16 = CRC::Calculate(section_data.data(), section_data.size(), CRC::CRC_16_CCITTFALSE());
 
     return 0;
 }
