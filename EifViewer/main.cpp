@@ -2,13 +2,11 @@
 // Created by bigun on 12/23/2018.
 //
 #include <iostream>
-#include <fstream>
 #include <vector>
-#include <iomanip>
 #include <cxxopts.hpp>
-#include <exception>
+#include <utils.h>
 
-#include "EifImage.h"
+#include "EifConverter.h"
 
 using namespace std;
 
@@ -20,7 +18,7 @@ int main(int argc, char **argv)
         bool unpack = false;
         unsigned depth = 32;
 
-        cxxopts::Options options("eif2bitmap", "Ford EDB.EIF viewer ");
+        cxxopts::Options options("eifconverter", "Ford EDB.EIF converter");
         options.add_options()
                 ("p,pack","Pack VBF file", cxxopts::value<bool>(pack))
                 ("u,unpack","Unpack VBF file", cxxopts::value<bool>(unpack))
@@ -49,39 +47,14 @@ int main(int argc, char **argv)
         }
 
         if(unpack) {
-            ifstream in_file(input_file_name, ios::binary | ios::ate);
-            if(in_file.fail())
-                throw runtime_error("File open error");
-
-            auto pos = in_file.tellg();
-            in_file.seekg(0, ios::beg);
-
-            vector<uint8_t> file_content(pos);
-            in_file.read(reinterpret_cast<char *>(&file_content[0]), file_content.size());
-            if(in_file.fail())
-                throw runtime_error("File open error");
-            in_file.close();
 
             if(out_file_name.empty()){
                 out_file_name = input_file_name + ".bmp";
             }
 
-            EifImageBase* image;
-
-            if(file_content[7] == EIF_TYPE_MONOCHROME) {
-                image = new EifImage8bit;
-            } else if(file_content[7] == EIF_TYPE_MULTICOLOR) {
-                image = new EifImage16bit;
-            } else if(file_content[7] == EIF_TYPE_SUPERCOLOR){
-                image = new EifImage32bit;
-            } else {
-                throw runtime_error("unsupported format");
-            }
-
-            image->openEif(file_content);
-            image->saveBmp(out_file_name);
-
-            delete image;
+            vector<uint8_t> v;
+            FTUtils::fileToVector(input_file_name, v);
+            EIF::EifConverter::eifToBmpFile(v, out_file_name);
 
         } else if(pack) {
 
@@ -89,25 +62,12 @@ int main(int argc, char **argv)
                 out_file_name = input_file_name + ".eif";
             }
 
-            EifImageBase* image;
-            switch (depth) {
-                case 8:
-                    image = new EifImage8bit;
-                    break;
-                case 16:
-                    image = new EifImage16bit;
-                    break;
-                case 32:
-                    image = new EifImage32bit;
-                    break;
-                default:
-                    throw runtime_error("Incorrect depth value");
+            if(depth != 8 && depth != 16 && depth != 32) {
+                cout << "Incorrect color depth value. It's may be only 8|16|32" << std::endl;
+                return 0;
             }
 
-            image->openBmp(input_file_name);
-            image->saveEif(out_file_name);
-
-            delete image;
+            EIF::EifConverter::bmpFileToEifFile(input_file_name, depth, out_file_name);
         }
     } catch (const cxxopts::OptionException& e){
         cout << "error parsing options: " << e.what() << endl;

@@ -2,10 +2,12 @@
 // Created by bigun on 12/28/2018.
 //
 
-#include "EifImage.h"
+#include "EifConverter.h"
 #include "FordPalette.h"
 #include <fstream>
 #include <limits>
+
+using namespace EIF;
 
 int EifImage8bit::openBmp(std::string file_name) {
 
@@ -77,7 +79,7 @@ void EifImage8bit::saveEif(std::string file_name) {
 void EifImage8bit::saveBmp(std::string file_name){
 
     BMP bmp_image;
-    bmp_image.SetSize(width, height);
+    bmp_image.SetSize((int)width, (int)height);
 
     for(auto i =0; i < height; i++){
         for(auto j=0; j < width; j++){
@@ -301,7 +303,7 @@ void EifImage16bit::saveBmp(std::string file_name) {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
-    bmp_image.SetSize(width, height);
+    bmp_image.SetSize((int)width, (int)height);
 
     for(auto i =0; i < height; i++){
         for(auto j=0; j < width; j++){
@@ -373,7 +375,7 @@ void EifImage32bit::saveBmp(std::string file_name) {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
-    bmp_image.SetSize(width, height);
+    bmp_image.SetSize((int)width, (int)height);
 
     for(auto i =0; i < height; i++){
         for(auto j=0; j < width; j++){
@@ -454,4 +456,47 @@ void EifImage32bit::saveEif(std::string file_name) {
         out_file.write(reinterpret_cast<char *>(&eif_img[0]), eif_img.size());
     }
     out_file.close();
+}
+
+void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name) {
+
+    EifImageBase* image;
+
+    if(data[7] == EIF_TYPE_MONOCHROME) {
+        image = new EifImage8bit;
+    } else if(data[7] == EIF_TYPE_MULTICOLOR) {
+        image = new EifImage16bit;
+    } else if(data[7] == EIF_TYPE_SUPERCOLOR){
+        image = new EifImage32bit;
+    } else {
+        throw std::runtime_error("Unsupported EIF format");
+    }
+
+    image->openEif(data);
+    image->saveBmp(out_file_name);
+
+    delete image;
+}
+
+void EifConverter::bmpFileToEifFile(const std::string& file_name, uint8_t depth, const std::string& out_file_name) {
+
+    EifImageBase* image;
+    switch (depth) {
+        case 8:
+            image = new EifImage8bit;
+            break;
+        case 16:
+            image = new EifImage16bit;
+            break;
+        case 32:
+            image = new EifImage32bit;
+            break;
+        default:
+            throw std::runtime_error("Incorrect depth value");
+    }
+
+    image->openBmp(file_name);
+    image->saveEif(out_file_name);
+
+    delete image;
 }

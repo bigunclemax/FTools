@@ -13,6 +13,8 @@
 #ifndef VBFEDIT_EIFIMAGE_H
 #define VBFEDIT_EIFIMAGE_H
 
+namespace EIF {
+
 static const uint8_t EIF_SIGNATURE[] = {'E','B','D',0x10,'E','I','F'};
 static const uint8_t EIF_TYPE_MONOCHROME = 0x04;
 static const uint8_t EIF_TYPE_MULTICOLOR = 0x07;
@@ -37,7 +39,7 @@ public:
     virtual int openBmp(std::string fileName) = 0;
     virtual void saveBmp(std::string fileName) = 0;
     virtual void saveEif(std::string fileName) = 0;
-    virtual ~EifImageBase(){};
+    virtual ~EifImageBase()= default;
 };
 
 class EifImage8bit: public EifImageBase {
@@ -50,7 +52,7 @@ public:
 
 class EifImage16bit: public EifImageBase {
     std::vector<uint8_t> palette;
-    uint8_t searchPixel(RGBApixel rgb_pixel);
+    static uint8_t searchPixel(RGBApixel rgb_pixel);
 public:
     int openEif(const std::vector<uint8_t>& data) override;
     void saveBmp(std::string file_name) override;
@@ -66,5 +68,13 @@ public:
     void saveEif(std::string file_name) override;
 };
 
+class EifConverter {
+
+public:
+    static void eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name);
+    static void bmpFileToEifFile(const std::string& file_name, uint8_t depth, const std::string& out_file_name);
+};
+
+}
 #endif //VBFEDIT_EIFIMAGE_H
 

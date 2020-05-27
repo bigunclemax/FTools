@@ -4,9 +4,12 @@ cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
-add_executable(eifviewer EifImage.cpp imgViewer.cpp ./EasyBMP/EasyBMP.cpp)
+add_library(eif EifConverter.cpp ./EasyBMP/EasyBMP.cpp)
+add_executable(eifviewer  main.cpp)
+target_link_libraries(eifviewer eif)
 include_directories(../cxxopts/include)
 include_directories(../CRCpp/inc)
+include_directories(../utils)
 include_directories(./EasyBMP)
 
 install(TARGETS eifviewer)
