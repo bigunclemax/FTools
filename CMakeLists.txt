@@ -14,5 +14,6 @@ add_subdirectory(EifViewer)
 add_subdirectory(ImgSectionParser)
 add_subdirectory(VbfEditor)
 add_subdirectory(ZipRepacker)
+add_subdirectory(ImgUnpacker)
 
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")

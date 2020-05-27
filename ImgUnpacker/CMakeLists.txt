@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(imgunpkr)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+
+include_directories(../cxxopts/include)
+include_directories(../VbfEditor)
+include_directories(../ImgSectionParser)
+include_directories(../EifViewer)
+include_directories(../utils)
+
+add_executable(imgunpkr main.cpp)
+target_include_directories(imgunpkr PUBLIC ../miniz)
+target_link_libraries(imgunpkr vbf imgsec eif miniz)
+if(WIN32)
+    target_link_libraries(imgunpkr ws2_32)
+endif()
+
+install(TARGETS imgunpkr)
