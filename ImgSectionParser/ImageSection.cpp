@@ -7,6 +7,7 @@
 #include <rapidjson/prettywriter.h>
 #include <fstream>
 #include <utils.h>
+#include <sstream>
 
 #include "ImageSection.h"
 

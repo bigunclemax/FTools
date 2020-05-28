@@ -92,7 +92,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
 
     //unpack vbf
     VbfFile vbf;
-    vbf.OpenFile(in_path);
+    vbf.OpenFile(in_path.string());
     if(!vbf.IsOpen()) {
         return -1; //can't parse vbf
     }
@@ -136,7 +136,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         mz_zip_reader_extract_to_mem(&zip_archive, file_index, (void *)eif.data(), eif.size(), 0);
         mz_zip_reader_end(&zip_archive);
 
-        FTUtils::bufferToFile(eifs_path/file_stat.m_filename, (char*)eif.data(), eif.size());
+        FTUtils::bufferToFile((eifs_path/file_stat.m_filename).string(), (char*)eif.data(), eif.size());
 
         //convert eif to bmp
         auto p = bmps_path/file_stat.m_filename;
@@ -162,7 +162,7 @@ int PackImg(const fs::path& config_path, const fs::path& vbf_path, const fs::pat
 
     //open vbf
     VbfFile vbf;
-    vbf.OpenFile(vbf_path);
+    vbf.OpenFile(vbf_path.string());
     if(!vbf.IsOpen()) {
         throw runtime_error("Can't open vbf");
     }
@@ -171,7 +171,7 @@ int PackImg(const fs::path& config_path, const fs::path& vbf_path, const fs::pat
     vbf.ReplaceSectionRaw(1, v);
 
     //pack vbf
-    vbf.SaveToFile(out_path/"patched.vbf");
+    vbf.SaveToFile((out_path/"patched.vbf").string());
 
     return 0;
 }
