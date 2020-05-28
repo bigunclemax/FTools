@@ -16,9 +16,9 @@ int main(int argc, char **argv)
 
         cxxopts::Options options("ZipRepacker", "Replace content in zip file");
         options.add_options()
-                ("i,input","Input file", cxxopts::value<string>())
-                ("c,content","Content file", cxxopts::value<string>())
-                ("o,output","Output file", cxxopts::value<string>())
+                ("i,input","Input zip file", cxxopts::value<string>())
+                ("c,content","Content eif file", cxxopts::value<string>())
+                ("o,output","Output zip file", cxxopts::value<string>())
                 ("h,help","Print help");
 
         options.parse_positional({"input"});
@@ -87,7 +87,7 @@ int repack_zip(const fs::path& input_zip, const fs::path& content_file, const fs
     mz_zip_archive zip_archive = {};
 
     status = mz_zip_reader_init_file(&zip_archive,
-                                     (const char*)input_zip.c_str(),
+                                     (const char*)input_zip.string().c_str(),
                                      MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY);
     if (!status)
     {
@@ -125,7 +125,7 @@ int repack_zip(const fs::path& input_zip, const fs::path& content_file, const fs
 
     zip_archive = {};
     unsigned flags = MZ_DEFAULT_LEVEL | MZ_ZIP_FLAG_ASCII_FILENAME;
-    status = mz_zip_writer_init_file_v2(&zip_archive, (const char*)out_zip.c_str(), 0, flags);
+    status = mz_zip_writer_init_file_v2(&zip_archive, (const char*)out_zip.string().c_str(), 0, flags);
     if (!status) {
         cerr << "mz_zip_writer_init_file_v2 failed!";
         return -1;
