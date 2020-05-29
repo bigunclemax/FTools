@@ -121,7 +121,6 @@ int ImageSection::Export(const fs::path &out_path, const string& name_prefix) {
             Value section_obj(kObjectType);
             {
                 section_obj.AddMember("file", Value((item_prefix + "/" += file_name).c_str(), allocator), allocator);
-                section_obj.AddMember("actual-size", Value().SetUint64(item.data.size()), allocator);
                 if(RT_ZIP == item.res_type) {
                     section_obj.AddMember("width", item.width, allocator);
                     section_obj.AddMember("height", item.height, allocator);
@@ -218,7 +217,6 @@ int ImageSection::Import(const fs::path &config_path) {
             auto sec_obj = section[i].GetObject();
             const Value& file = sec_obj["file"];
             fs::path file_path =  config_dir / file.GetString();
-            size_t actual_sz = sec_obj["actual-size"].GetInt();
 
             if(sec_obj.HasMember("width")) {
                 items_vector[i].width = (uint32_t)sec_obj["width"].GetInt();
@@ -228,9 +226,6 @@ int ImageSection::Import(const fs::path &config_path) {
             }
 
             FTUtils::fileToVector(file_path, items_vector[i].data);
-            if(items_vector[i].data.size() != actual_sz) {
-                throw runtime_error("actual_sz and size of file '" + file_path.string() + "' mismatch");
-            }
         }
     };
 
