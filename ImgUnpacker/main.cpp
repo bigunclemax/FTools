@@ -109,6 +109,8 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     img_sec.Export(out_path);
 
     //unpack eifs
+    std::ofstream export_list (out_path / "export_list.txt");
+
     int zip_items = img_sec.GetItemsCount(ImageSection::RT_ZIP);
 
     fs::path eifs_path = out_path/"eif";
@@ -143,7 +145,11 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         p.replace_extension(".bmp");
         EIF::EifConverter::eifToBmpFile(eif, p.string());
 
+        export_list << i <<".zip" << " - " << file_stat.m_filename << std::endl;
     }
+
+    export_list.close();
+
     return 0;
 }
 
