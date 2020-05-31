@@ -239,12 +239,11 @@ int EifImage16bit::openBmp(std::string file_name) {
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
 
-    auto aligned_width = (width % 2) ? (width/2 + 1)*2 : width;
     bitmap_data.clear();
-    bitmap_data.resize(height * aligned_width * 2);
+    bitmap_data.resize(height * width * 2);
 
     for(auto i =0; i < height; i++){
-        for(auto j=0; j < width; j++){ //TODO: maybe this need aligned_width ?
+        for(auto j=0; j < width; j++){
             if(j >= width){
                 bitmap_data[0 + i * width *2 + j*2] = 0x0;
                 bitmap_data[1 + i * width *2 + j*2] = 0x0;
