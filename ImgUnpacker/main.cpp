@@ -30,7 +30,7 @@ void parse_opts(int argc, char **argv, Opts& opts) {
                 ("v,vbf","VBF file which will be patched", cxxopts::value<string>())
                 ("h,help","Print help");
 
-//        options.parse_positional({"vbf"});
+        options.parse_positional({"vbf"});
         auto result = options.parse(argc, argv);
 
         if(result.arguments().empty() || result.count("help")){
@@ -109,7 +109,17 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     img_sec.Export(out_path);
 
     //unpack eifs
-    std::ofstream export_list (out_path / "export_list.txt");
+    std::ofstream export_list (out_path / "export_list.csv");
+    export_list << "ZipName"
+                << ","
+                << "ImgName"
+                << ","
+                << "ImgWidth"
+                << ","
+                << "ImgHeight"
+                << ","
+                << "ImgType"
+                << std::endl;
 
     int zip_items = img_sec.GetItemsCount(ImageSection::RT_ZIP);
 
@@ -145,7 +155,17 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         p.replace_extension(".bmp");
         EIF::EifConverter::eifToBmpFile(eif, p.string());
 
-        export_list << i <<".zip" << " - " << file_stat.m_filename << std::endl;
+        auto header_p = reinterpret_cast<EIF::EifBaseHeader*>(eif.data());
+        export_list << i << ".zip"
+            << ","
+            << file_stat.m_filename
+            << ","
+            << header_p->width
+            << ","
+            << header_p->height
+            << ","
+            << ToString((image_type)header_p->type)
+            << std::endl;
     }
 
     export_list.close();
