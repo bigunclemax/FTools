@@ -235,15 +235,11 @@ int ImageSection::Import(const fs::path &config_path) {
     return 0;
 }
 
-int ImageSection::SaveToFile(const fs::path &out_path) {
-
-    ofstream out_file(out_path.string(), ios::binary | ios::out);
-    if(!out_file.good()) {
-        throw runtime_error("can't create out file '" + out_path.string() + "'");
-    }
+int ImageSection::SaveToVector(vector<uint8_t> &v) {
 
     //write header
-    out_file.write(reinterpret_cast<char *>(m_header_data.data()), m_header_data.size());
+    v.resize(m_header_data.size());
+    copy(m_header_data.data(), m_header_data.data() + m_header_data.size(), v.begin());
 
     //calc initial data offset
     uint32_t zip_count = m_zip_vec.size();
@@ -253,7 +249,7 @@ int ImageSection::SaveToFile(const fs::path &out_path) {
     data_offset += ttf_count * sizeof(ttf_file) + sizeof(uint32_t);
     data_offset += sizeof(uint32_t); // + magic int
 
-    auto createItemsHeaders = [&out_file, &data_offset](const vector<Item>& items_vector) {
+    auto createItemsHeaders = [&v, &data_offset](const vector<Item>& items_vector) {
 
         for (const auto& item : items_vector) {
 
@@ -269,42 +265,41 @@ int ImageSection::SaveToFile(const fs::path &out_path) {
                 item_h.width = item.width;
                 sprintf(item_h.fileName, "~mem/0x%08X-%10d.zip", data_offset, actual_sz);
 
-                out_file.write(reinterpret_cast<char *>(&item_h), sizeof(item_h));
+                copy((char *)&item_h,(char *)&item_h + sizeof(item_h), back_inserter(v));
             } else {
                 ttf_file item_h = {};
                 sprintf(item_h.fileName, "~mem/0x%08X-%10d.ttf", data_offset, actual_sz);
 
-                out_file.write(reinterpret_cast<char *>(&item_h), sizeof(item_h));
+                copy((char *)&item_h,(char *)&item_h + sizeof(item_h), back_inserter(v));
             }
 
             data_offset += padded_sz;
         }
     };
-    auto packItems = [&out_file, &data_offset](const vector<Item>& items_vector) {
+    auto packItems = [&v, &data_offset](const vector<Item>& items_vector) {
 
-        char zero =0;
         for (const auto& item : items_vector) {
 
             auto actual_sz = item.data.size();
             auto remainder = actual_sz % 4;
             uint32_t padded_sz = actual_sz + ((remainder) ? (4 - remainder) : 0);
-            out_file.write(reinterpret_cast<const char *>(item.data.data()), actual_sz);
+            copy((char *)item.data.data(),(char *)item.data.data() + actual_sz, back_inserter(v));
 
             for(int j = actual_sz; j < padded_sz; ++j)
-                out_file.write(&zero, 1);
+                v.push_back(0);
         }
     };
 
     //create zip headers
-    out_file.write(reinterpret_cast<char *>(&zip_count), sizeof(uint32_t));
+    copy((char *)&zip_count,(char *)&zip_count + sizeof(uint32_t), back_inserter(v));
     createItemsHeaders(m_zip_vec);
 
     //create ttf header
-    out_file.write(reinterpret_cast<char *>(&ttf_count), sizeof(uint32_t));
+    copy((char *)&ttf_count,(char *)&ttf_count + sizeof(uint32_t), back_inserter(v));
     createItemsHeaders(m_ttf_vec);
 
     //magic int
-    out_file.write((char *)&m_unknownInt, sizeof(uint32_t));
+    copy((char *)&m_unknownInt,(char *)&m_unknownInt + sizeof(uint32_t), back_inserter(v));
 
     //zip data
     packItems(m_zip_vec);
@@ -312,7 +307,14 @@ int ImageSection::SaveToFile(const fs::path &out_path) {
     //ttf data
     packItems(m_ttf_vec);
 
-    out_file.close();
+    return 0;
+}
+
+int ImageSection::SaveToFile(const fs::path &out_path) {
+
+    vector<uint8_t> v;
+    SaveToVector(v);
+    FTUtils::bufferToFile(out_path, (char*)v.data(), v.size());
 
     return 0;
 }
