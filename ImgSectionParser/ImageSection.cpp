@@ -346,3 +346,19 @@ int ImageSection::GetItemData(ImageSection::enResType res_type, unsigned idx, ve
     return 0;
 }
 
+int ImageSection::ReplaceItem(enResType res_type, unsigned idx, const vector<uint8_t>& bin_data,
+                              uint32_t w, uint32_t h, uint8_t t)
+{
+
+    if (res_type == RT_ZIP) {
+        auto& item = m_zip_vec[idx];
+        item.data = bin_data;
+        item.height = w;
+        item.width = h;
+        item.img_type = t;
+    } else if (res_type == RT_TTF) {
+        m_ttf_vec[idx].data = bin_data;
+    }
+
+    return 0;
+}

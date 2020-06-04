@@ -74,6 +74,8 @@ public:
     int GetItemData(enResType res_type, unsigned idx, vector<uint8_t>& bin_data);
     int AddItem();
     int DelItem();
+    int ReplaceItem(enResType res_type, unsigned idx, const vector<uint8_t>& bin_data,
+            uint32_t w=0, uint32_t h=0, uint8_t t=0);
 
 private:
 
