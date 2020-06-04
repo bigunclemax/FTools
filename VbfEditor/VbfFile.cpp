@@ -251,6 +251,22 @@ int VbfFile::Import(const string& conf_file_path) {
     return -1;
 }
 
+uint32_t VbfFile::calcCRC32() {
+
+    uint32_t crc32 = 0;
+    for(auto & section : m_bin_sections) {
+        uint32_t length_be = htonl(*(uint32_t *)(&section->length));
+        uint32_t addr_be = htonl(*(uint32_t *)(&section->start_addr));
+        uint16_t crc16_be = htons(*(uint32_t *)(&section->crc16));
+
+        crc32 = CRC::Calculate(&addr_be, sizeof(section->start_addr), CRC::CRC_32(), crc32);
+        crc32 = CRC::Calculate(&length_be, sizeof(section->length), CRC::CRC_32(), crc32);
+        crc32 = CRC::Calculate(section->data.data(), section->length, CRC::CRC_32(), crc32);
+        crc32 = CRC::Calculate(&crc16_be, sizeof(section->crc16), CRC::CRC_32(), crc32);
+    }
+    return crc32;
+}
+
 int VbfFile::SaveToFile(std::string file_path) {
 
     if(file_path.empty()) {
@@ -265,7 +281,9 @@ int VbfFile::SaveToFile(std::string file_path) {
         }
     };
 
-    //header magic
+    // fix header
+    m_CRC32 = calcCRC32();
+
     stringstream str_buff;
     str_buff << hex << setw(8) << setfill('0') << uppercase << m_CRC32;
 
@@ -331,6 +349,7 @@ int VbfFile::ReplaceSectionRaw(uint8_t section_idx, const vector<uint8_t> &secti
 
     auto sections_it = m_bin_sections.begin();
     std::advance(sections_it, section_idx);
+    m_content_size += (section_data.size() - (*sections_it)->length);
     (*sections_it)->data = section_data;
     (*sections_it)->length = section_data.size();
     (*sections_it)->crc16 = CRC::Calculate(section_data.data(), section_data.size(), CRC::CRC_16_CCITTFALSE());

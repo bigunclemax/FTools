@@ -27,6 +27,8 @@ class VbfFile {
     std::string m_ascii_header;
     std::list <VbfBinarySection *> m_bin_sections;
     bool m_is_open = false;
+
+    uint32_t calcCRC32();
 public:
     [[nodiscard]] bool IsOpen() const { return m_is_open;};
     int OpenFile (const std::string& file_path);
