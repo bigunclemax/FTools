@@ -8,6 +8,7 @@
 #include <utils.h>
 #include <EifConverter.h>
 #include <cxxopts.hpp>
+#include <csv.h>
 
 namespace fs = std::filesystem;
 
@@ -94,12 +95,12 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     VbfFile vbf;
     vbf.OpenFile(in_path.string());
     if(!vbf.IsOpen()) {
-        return -1; //can't parse vbf
+        throw runtime_error("Can't parse vbf");
     }
 
     std::vector<uint8_t> img_sec_bin;
     if(vbf.GetSectionRaw(1, img_sec_bin)) {
-        return -1; //can't get image function
+        throw runtime_error("Can't get image section");
     }
 
     //unpack image section
@@ -173,25 +174,90 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     return 0;
 }
 
+//TODO:
+int vectorToZip(const fs::path& file_path, std::vector<uint8_t>& data, const char * name) {
+
+    mz_bool status;
+
+    mz_zip_archive zip_archive = {};
+    unsigned flags = MZ_DEFAULT_LEVEL | MZ_ZIP_FLAG_ASCII_FILENAME;
+    status = mz_zip_writer_init_file_v2(&zip_archive, (const char*)file_path.string().c_str(), 0, flags);
+    if (!status) {
+        cerr << "mz_zip_writer_init_file_v2 failed!";
+        return -1;
+    }
+
+    status = mz_zip_writer_add_mem_ex(&zip_archive, name, (void*)data.data(), data.size(), "", 0, flags, 0, 0);
+    if (!status) {
+        cerr << "mz_zip_writer_add_mem_ex failed!";
+        return -1;
+    }
+
+    status = mz_zip_writer_finalize_archive(&zip_archive);
+    if (!status) {
+        cerr << "mz_zip_writer_finalize_archive failed!";
+        return -1;
+    }
+    status = mz_zip_writer_end(&zip_archive);
+    if (!status) {
+        cerr << "mz_zip_writer_end failed!";
+        return -1;
+    }
+
+    return 0;
+}
+
 int PackImg(const fs::path& config_path, const fs::path& vbf_path, const fs::path& out_path) {
 
-    //open image section config
-    //pack image section
-    ImageSection section;
-    section.Import(config_path);
-
     vector<uint8_t> v;
-    fs::path tmp_f = out_path/"ft.tmp";
-    section.SaveToFile(tmp_f);
-    FTUtils::fileToVector(tmp_f, v);
-    fs::remove(tmp_f);
 
-    //open vbf
+    //open vbf and get image section
     VbfFile vbf;
     vbf.OpenFile(vbf_path.string());
     if(!vbf.IsOpen()) {
         throw runtime_error("Can't open vbf");
     }
+
+    std::vector<uint8_t> img_sec_bin;
+    if(vbf.GetSectionRaw(1, img_sec_bin)) {
+        throw runtime_error("Can't get image section");
+    }
+
+    ImageSection img_sec;
+    img_sec.Parse(img_sec_bin);
+
+    io::CSVReader<5> in(config_path);
+    in.read_header(io::ignore_extra_column, "ZipName", "ImgName", "ImgWidth", "ImgHeight", "ImgType");
+    std::string zip_name, eif_name, type;
+    uint32_t a,b;
+
+    int i=0;
+    while(in.read_row(zip_name, eif_name, a, b, type)){
+        //open eif
+        fs::path eif_path = config_path.parent_path() / "eif" / eif_name;
+        vector<uint8_t> eif_bin;
+        FTUtils::fileToVector(eif_path, eif_bin);
+
+        //get header data
+        auto eif_header_p = reinterpret_cast<const EIF::EifBaseHeader*>(eif_bin.data());
+
+        //zip eif
+        std::string tmp_f = std::tmpnam(nullptr);
+        vectorToZip(tmp_f, eif_bin, eif_name.c_str());
+
+        vector<uint8_t> zip_bin;
+        FTUtils::fileToVector(tmp_f, zip_bin);
+        //replace
+        img_sec.ReplaceItem(ImageSection::RT_ZIP, i, zip_bin,
+                eif_header_p->width, eif_header_p->height, eif_header_p->type);
+
+        //cleanup
+        fs::remove(tmp_f);
+
+        ++i;
+    }
+
+    img_sec.SaveToVector(v);
 
     //replace vbf image content
     vbf.ReplaceSectionRaw(1, v);
