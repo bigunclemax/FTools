@@ -314,7 +314,7 @@ int ImageSection::SaveToFile(const fs::path &out_path) {
 
     vector<uint8_t> v;
     SaveToVector(v);
-    FTUtils::bufferToFile(out_path, (char*)v.data(), v.size());
+    FTUtils::bufferToFile(out_path.u8string(), (char*)v.data(), v.size());
 
     return 0;
 }
