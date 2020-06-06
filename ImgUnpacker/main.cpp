@@ -33,7 +33,7 @@ void parse_opts(int argc, char **argv, Opts& opts) {
                 ("p,pack","Pack VBF file")
                 ("u,unpack","Unpack VBF file")
                 ("c,conf","Config file", cxxopts::value<string>())
-                ("o,output","Output file", cxxopts::value<string>())
+                ("o,output","Output path", cxxopts::value<string>())
                 ("v,vbf","VBF file which will be patched", cxxopts::value<string>())
                 ("h,help","Print help");
 

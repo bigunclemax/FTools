@@ -20,8 +20,8 @@ int main(int argc, char **argv)
 
         cxxopts::Options options("eifconverter", "Ford EDB.EIF converter");
         options.add_options()
-                ("p,pack","Pack VBF file", cxxopts::value<bool>(pack))
-                ("u,unpack","Unpack VBF file", cxxopts::value<bool>(unpack))
+                ("p,pack","Pack EIF file", cxxopts::value<bool>(pack))
+                ("u,unpack","Unpack EIF file", cxxopts::value<bool>(unpack))
                 ("d,depth","Output Eif type 8/16/32", cxxopts::value<unsigned>(depth))
                 ("i,input","Input file", cxxopts::value<string>())
                 ("o,output","Output file", cxxopts::value<string>())
