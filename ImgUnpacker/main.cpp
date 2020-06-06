@@ -107,8 +107,6 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     ImageSection img_sec;
     img_sec.Parse(img_sec_bin);
 
-    img_sec.Export(out_path);
-
     //unpack eifs
     std::ofstream export_list (out_path / "export_list.csv");
     export_list << "ZipName"
