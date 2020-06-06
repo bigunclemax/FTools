@@ -10,14 +10,12 @@ int main(int argc, char **argv)
 
         bool unpack = false;
         bool pack = false;
-        bool verbose = false;
 
         cxxopts::Options options("imgparcer", "Ford IPC images extractor");
         options.add_options()
                 ("u,unpack","Extract resources form image section to destination dir", cxxopts::value<bool>(unpack))
                 ("p,pack","Pack image section", cxxopts::value<bool>(pack))
                 ("i,input","Input file", cxxopts::value<string>())
-//                ("v,verbose","Show section content", cxxopts::value<bool>(verbose)) //TODO: add verbose mode
                 ("o,output","Output directory", cxxopts::value<string>()->default_value(""))
                 ("h,help","Print help");
 

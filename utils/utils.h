@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 
 namespace FTUtils {
 
-    inline void bufferToFile(const std::string& file_name, char *data_ptr, int data_len) {
+    inline void bufferToFile(const std::string& file_name, const char *data_ptr, int data_len) {
 
         std::ofstream out_file(file_name, std::ios::out | std::ios::binary);
         if (!out_file) {
