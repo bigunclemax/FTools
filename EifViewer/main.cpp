@@ -25,7 +25,6 @@ int main(int argc, char **argv)
                 ("d,depth","Output Eif type 8/16/32", cxxopts::value<unsigned>(depth))
                 ("i,input","Input file", cxxopts::value<string>())
                 ("o,output","Output file", cxxopts::value<string>())
-                ("s,scheme","Color scheme file", cxxopts::value<string>())
                 ("h,help","Print help");
 
         options.parse_positional({"input"});
@@ -68,16 +67,7 @@ int main(int argc, char **argv)
                 return 0;
             }
 
-            if(depth == 16) {
-                if(!result.count("scheme")){
-                    cout << "Please, specify color scheme file" << std::endl;
-                    return 0;
-                }
-                EIF::EifConverter::bmpFileToEifFile(input_file_name, depth, out_file_name,
-                        result["scheme"].as<string>());
-            } else {
-                EIF::EifConverter::bmpFileToEifFile(input_file_name, depth, out_file_name);
-            }
+            EIF::EifConverter::bmpFileToEifFile(input_file_name, depth, out_file_name);
         }
     } catch (const cxxopts::OptionException& e){
         cout << "error parsing options: " << e.what() << endl;
