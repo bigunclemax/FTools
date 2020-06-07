@@ -6,6 +6,7 @@
 #include <fstream>
 #include <limits>
 #include <utils.h>
+#include <exoquant.h>
 
 using namespace EIF;
 
@@ -198,50 +199,54 @@ int EifImage16bit::openEif(const std::vector<uint8_t> &data) {
     return 0;
 }
 
-uint8_t EifImage16bit::searchPixel(RGBApixel rgb_pixel) {
-
-    double color_distance = std::numeric_limits<double>::max();
-    uint8_t closest_index =0;
-
-    for(auto i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i+=3) {
-        int R = palette[i];
-        int G = palette[i+1];
-        int B = palette[i+2];
-
-        double color_distance_new = sqrt(
-                pow((rgb_pixel.Blue - B),2) +
-                pow((rgb_pixel.Red - R),2) +
-                pow((rgb_pixel.Green - G),2));
-
-        if(color_distance_new < color_distance) {
-            color_distance = color_distance_new;
-            closest_index = (uint8_t)(i / 3);
-            if(color_distance == 0) {
-                break;
-            }
-        }
-    }
-
-    return closest_index;
-}
-
 int EifImage16bit::openBmp(std::string file_name) {
 
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.c_str());
 
-    auto depth = bmp_image.TellBitDepth();
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
+    auto num_pixels = height * width;
 
     bitmap_data.clear();
-    bitmap_data.resize(height * width * 2);
+    bitmap_data.resize(num_pixels * 2);
+
+    std::vector<uint8_t> pImage_data;
+    pImage_data.reserve(num_pixels*4);
+    for(auto i =0; i < height; i++){
+        for(auto j=0; j < width; j++){
+            auto px = bmp_image.GetPixel(j,i);
+            pImage_data.push_back(px.Red);
+            pImage_data.push_back(px.Green);
+            pImage_data.push_back(px.Blue);
+            pImage_data.push_back(px.Alpha);
+        }
+    }
+
+    unsigned char pPalette[EIF_MULTICOLOR_NUM_COLORS * 4];
+    unsigned char pOut[num_pixels];
+
+    exq_data *pExq;
+    pExq = exq_init();
+    exq_no_transparency(pExq);
+    exq_feed(pExq, (unsigned char *)pImage_data.data(), num_pixels);
+    exq_quantize_hq(pExq, EIF_MULTICOLOR_NUM_COLORS); //TODO: add param for fast mode
+    exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
+    exq_map_image(pExq, num_pixels, (unsigned char *)pImage_data.data(), pOut);
+    exq_free(pExq);
+
+    //convert palette
+    palette.resize(EIF_MULTICOLOR_NUM_COLORS * 3);
+    for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
+        palette[i*3+0] = pPalette[i*4+0];
+        palette[i*3+1] = pPalette[i*4+1];
+        palette[i*3+2] = pPalette[i*4+2];
+    }
 
     for(auto i =0; i < height; i++){
         for(auto j=0; j < width; j++){
-            RGBApixel rgb_pixel = bmp_image.GetPixel(j,i);
-            bitmap_data[0 + i * width *2 + j*2] = searchPixel(rgb_pixel);
-            bitmap_data[1 + i * width *2 + j*2] = rgb_pixel.Alpha;
+            bitmap_data[0 + i * width *2 + j*2] = pOut[i*width+j];
+            bitmap_data[1 + i * width *2 + j*2] = 0; //TODO: add transparency support
         }
     }
 

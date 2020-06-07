@@ -20,6 +20,7 @@ static const uint8_t EIF_TYPE_MONOCHROME = 0x04;
 static const uint8_t EIF_TYPE_MULTICOLOR = 0x07;
 static const uint8_t EIF_TYPE_SUPERCOLOR = 0x0E;
 static const int EIF_MULTICOLOR_PALETTE_SIZE = 0x300;
+static const int EIF_MULTICOLOR_NUM_COLORS = 256;
 
 struct EifBaseHeader {
     uint8_t  signature[7];
@@ -52,12 +53,11 @@ public:
 
 class EifImage16bit: public EifImageBase {
     std::vector<uint8_t> palette;
-    static uint8_t searchPixel(RGBApixel rgb_pixel);
 public:
     int openEif(const std::vector<uint8_t>& data) override;
     void saveBmp(std::string file_name) override;
     int openBmp(std::string file_name) override;
-    void saveEif(std::string file_name)override;
+    void saveEif(std::string file_name) override;
 };
 
 class EifImage32bit: public EifImageBase {
