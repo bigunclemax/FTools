@@ -224,7 +224,7 @@ int EifImage16bit::openBmp(std::string file_name) {
     }
 
     unsigned char pPalette[EIF_MULTICOLOR_NUM_COLORS * 4];
-    unsigned char pOut[num_pixels];
+    unsigned char* pOut = (unsigned char*)malloc(num_pixels);
 
     exq_data *pExq;
     pExq = exq_init();
@@ -249,6 +249,8 @@ int EifImage16bit::openBmp(std::string file_name) {
             bitmap_data[1 + i * width *2 + j*2] = 0; //TODO: add transparency support
         }
     }
+
+    free(pOut);
 
     return 0;
 }
