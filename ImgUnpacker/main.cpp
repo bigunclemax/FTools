@@ -233,7 +233,7 @@ int PackImg(const fs::path& config_path, const fs::path& vbf_path, const fs::pat
     ImageSection img_sec;
     img_sec.Parse(img_sec_bin);
 
-    io::CSVReader<3> in(config_path);
+    io::CSVReader<3> in(config_path.string());
     in.read_header(io::ignore_extra_column, ITEM_IDX, ITEM_NAME, ITEM_TYPE);
     std::string name, type;
     uint32_t idx;
