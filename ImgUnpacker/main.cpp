@@ -183,30 +183,36 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     return 0;
 }
 
-//TODO:
-int vectorToZip(const fs::path& file_path, std::vector<uint8_t>& data, const char * name) {
+int compressVector(const std::vector<uint8_t>& data, const char * data_name, std::vector<uint8_t>& compressed_data) {
 
     mz_bool status;
-
     mz_zip_archive zip_archive = {};
     unsigned flags = MZ_DEFAULT_LEVEL | MZ_ZIP_FLAG_ASCII_FILENAME;
-    status = mz_zip_writer_init_file_v2(&zip_archive, (const char*)file_path.string().c_str(), 0, flags);
+
+    status = mz_zip_writer_init_heap(&zip_archive, 0, 0);
     if (!status) {
-        cerr << "mz_zip_writer_init_file_v2 failed!";
+        cerr << "mz_zip_writer_init_heap failed!";
         return -1;
     }
 
-    status = mz_zip_writer_add_mem_ex(&zip_archive, name, (void*)data.data(), data.size(), "", 0, flags, 0, 0);
+    status = mz_zip_writer_add_mem_ex(&zip_archive, data_name, (void*)data.data(), data.size(), "", 0, flags, 0, 0);
     if (!status) {
         cerr << "mz_zip_writer_add_mem_ex failed!";
         return -1;
     }
 
-    status = mz_zip_writer_finalize_archive(&zip_archive);
+    std::size_t size;
+    void *pBuf;
+    status = mz_zip_writer_finalize_heap_archive(&zip_archive, &pBuf, &size);
     if (!status) {
-        cerr << "mz_zip_writer_finalize_archive failed!";
+        cerr << "mz_zip_writer_finalize_heap_archive failed!";
         return -1;
     }
+
+    //copy compressed data to vector
+    compressed_data.resize(size);
+    copy((uint8_t*)pBuf, (uint8_t*)pBuf + size, compressed_data.begin());
+
     status = mz_zip_writer_end(&zip_archive);
     if (!status) {
         cerr << "mz_zip_writer_end failed!";
@@ -251,13 +257,9 @@ int PackImg(const fs::path& config_path, const fs::path& vbf_path, const fs::pat
             //get header data
             auto eif_header_p = reinterpret_cast<const EIF::EifBaseHeader*>(file_bin.data());
 
-            //zip eif
-            std::string tmp_f = std::tmpnam(nullptr);
-            vectorToZip(tmp_f, file_bin, name.c_str());
-
+            //compress
             vector<uint8_t> zip_bin;
-            FTUtils::fileToVector(tmp_f, zip_bin);
-            fs::remove(tmp_f);
+            compressVector(file_bin,name.c_str(),zip_bin);
 
             //replace
             img_sec.ReplaceItem(ImageSection::RT_ZIP, idx, zip_bin,
