@@ -246,7 +246,7 @@ int EifImage16bit::openBmp(std::string file_name) {
     for(auto i =0; i < height; i++){
         for(auto j=0; j < width; j++){
             bitmap_data[0 + i * width *2 + j*2] = pOut[i*width+j];
-            bitmap_data[1 + i * width *2 + j*2] = 0; //TODO: add transparency support
+            bitmap_data[1 + i * width *2 + j*2] = 0xFF; //TODO: add transparency support
         }
     }
 
