@@ -14,7 +14,7 @@ static const char* ITEM_IDX = "Idx";
 static const char* ITEM_NAME = "Name";
 static const char* ITEM_WIDTH = "Width";
 static const char* ITEM_HEIGHT = "Height";
-static const char* ITEM_TYPE = "Type";
+static const char* ITEM_TYPE = "Depth";
 
 namespace fs = std::filesystem;
 
@@ -158,7 +158,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         auto header_p = reinterpret_cast<EIF::EifBaseHeader*>(eif.data());
         export_list << i << ","
             << file_stat.m_filename << ","
-            << ToString((image_type)header_p->type) << ","
+            << ToColorDepth((image_type)header_p->type) << ","
             << header_p->width << ","
             << header_p->height
             << std::endl;

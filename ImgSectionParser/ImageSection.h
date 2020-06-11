@@ -41,6 +41,17 @@ inline const char* ToString(image_type v)
     }
 }
 
+inline int ToColorDepth(image_type v)
+{
+    switch (v)
+    {
+        case EIF_TYPE_MONOCHROME: return 8;
+        case EIF_TYPE_MULTICOLOR: return 16;
+        case EIF_TYPE_SUPERCOLOR: return 32;
+        default:      return 0;
+    }
+}
+
 inline image_type FromString(const std::string& type)
 {
     if(type == "MONOCHROME") {
