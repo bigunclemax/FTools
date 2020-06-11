@@ -55,7 +55,12 @@ int main(int argc, char **argv)
 
             vector<uint8_t> v;
             FTUtils::fileToVector(input_file_name, v);
-            EIF::EifConverter::eifToBmpFile(v, out_file_name);
+
+            if(result.count("scheme")) {
+                EIF::EifConverter::eifToBmpFile(v, out_file_name,result["scheme"].as<string>());
+            } else {
+                EIF::EifConverter::eifToBmpFile(v, out_file_name);
+            }
 
         } else if(pack) {
 

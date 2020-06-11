@@ -73,7 +73,8 @@ public:
 class EifConverter {
 
 public:
-    static void eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name);
+    static void eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name,
+            const std::string& palette_file_name = "");
     static void bmpFileToEifFile(const std::string& file_name, uint8_t depth, const std::string& out_file_name,
             const std::string& palette_file_name = "");
 };

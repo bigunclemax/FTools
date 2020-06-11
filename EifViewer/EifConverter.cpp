@@ -186,11 +186,13 @@ int EifImage16bit::openEif(const std::vector<uint8_t> &data) {
                            data.begin() + i + header.width * sizeof(uint16_t));
     }
 
-    palette.resize(EIF_MULTICOLOR_PALETTE_SIZE);
-    std::copy(
-            data.begin() + sizeof(EifBaseHeader),
-            data.begin() + sizeof(EifBaseHeader) + EIF_MULTICOLOR_PALETTE_SIZE,
-            palette.begin());
+    if(palette.empty()) {
+        palette.resize(EIF_MULTICOLOR_PALETTE_SIZE);
+        std::copy(
+                data.begin() + sizeof(EifBaseHeader),
+                data.begin() + sizeof(EifBaseHeader) + EIF_MULTICOLOR_PALETTE_SIZE,
+                palette.begin());
+    }
 
     width = header.width;
     height = header.height;
@@ -475,7 +477,9 @@ void EifImage32bit::saveEif(std::string file_name) {
     out_file.close();
 }
 
-void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name) {
+void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name,
+        const std::string& palette_file_name)
+{
 
     EifImageBase* image;
 
@@ -483,6 +487,11 @@ void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::str
         image = new EifImage8bit;
     } else if(data[7] == EIF_TYPE_MULTICOLOR) {
         image = new EifImage16bit;
+        if(!palette_file_name.empty()) {
+            std::vector<uint8_t> palette;
+            FTUtils::fileToVector(palette_file_name, palette);
+            dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
+        }
     } else if(data[7] == EIF_TYPE_SUPERCOLOR){
         image = new EifImage32bit;
     } else {
