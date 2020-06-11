@@ -73,13 +73,9 @@ int main(int argc, char **argv)
                 return 0;
             }
 
-            if(depth == 16) {
-                if(!result.count("scheme")){
-                    cout << "Please, specify color scheme file" << std::endl;
-                    return 0;
-                }
+            if(depth == 16 && result.count("scheme")){
                 EIF::EifConverter::bmpFileToEifFile(input_file_name, depth, out_file_name,
-                        result["scheme"].as<string>());
+                                                    result["scheme"].as<string>());
             } else {
                 EIF::EifConverter::bmpFileToEifFile(input_file_name, depth, out_file_name);
             }

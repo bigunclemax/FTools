@@ -6,6 +6,7 @@
 #include <fstream>
 #include <limits>
 #include <utils.h>
+#include <exoquant.h>
 
 using namespace EIF;
 
@@ -229,30 +230,72 @@ uint8_t EifImage16bit::searchPixel(RGBApixel rgb_pixel) {
 
 int EifImage16bit::openBmp(std::string file_name) {
 
-    if(palette.empty()) {
-        std::cerr << "Can't open bmp file: " << file_name << " Palette required" << std::endl;
-        return 0;
-    }
-
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.c_str());
 
-    auto depth = bmp_image.TellBitDepth();
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
+    auto num_pixels = height * width;
 
     bitmap_data.clear();
-    bitmap_data.resize(height * width * 2);
+    bitmap_data.resize(num_pixels * 2);
 
-    for(auto i =0; i < height; i++){
-        for(auto j=0; j < width; j++){
-            if(j >= width){
-                bitmap_data[0 + i * width *2 + j*2] = 0x0;
-                bitmap_data[1 + i * width *2 + j*2] = 0x0;
-            } else {
-                RGBApixel rgb_pixel = bmp_image.GetPixel(j,i);
-                bitmap_data[0 + i * width *2 + j*2] = searchPixel(rgb_pixel);
-                bitmap_data[1 + i * width *2 + j*2] = rgb_pixel.Alpha;
+    if(palette.empty()) {
+        std::cerr << "Create new palette" << std::endl;
+
+        std::vector<uint8_t> pImage_data;
+        pImage_data.reserve(num_pixels*4);
+        for(auto i =0; i < height; i++){
+            for(auto j=0; j < width; j++){
+                auto px = bmp_image.GetPixel(j,i);
+                pImage_data.push_back(px.Red);
+                pImage_data.push_back(px.Green);
+                pImage_data.push_back(px.Blue);
+                pImage_data.push_back(px.Alpha);
+            }
+        }
+
+        unsigned char pPalette[EIF_MULTICOLOR_NUM_COLORS * 4];
+        unsigned char* pOut = (unsigned char*)malloc(num_pixels);
+
+        exq_data *pExq;
+        pExq = exq_init();
+        exq_no_transparency(pExq);
+        exq_feed(pExq, (unsigned char *)pImage_data.data(), num_pixels);
+        exq_quantize_hq(pExq, EIF_MULTICOLOR_NUM_COLORS); //TODO: add param for fast mode
+        exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
+        exq_map_image(pExq, num_pixels, (unsigned char *)pImage_data.data(), pOut);
+        exq_free(pExq);
+
+        //convert palette
+        palette.resize(EIF_MULTICOLOR_NUM_COLORS * 3);
+        for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
+            palette[i*3+0] = pPalette[i*4+0];
+            palette[i*3+1] = pPalette[i*4+1];
+            palette[i*3+2] = pPalette[i*4+2];
+        }
+
+        for(auto i =0; i < height; i++){
+            for(auto j=0; j < width; j++){
+                bitmap_data[0 + i * width *2 + j*2] = pOut[i*width+j];
+                bitmap_data[1 + i * width *2 + j*2] = 0xFF; //TODO: add transparency support
+            }
+        }
+
+        free(pOut);
+
+    } else {
+        std::cerr << "Use palette form file: " << file_name << std::endl;
+        for(auto i =0; i < height; i++){
+            for(auto j=0; j < width; j++){
+                if(j >= width){
+                    bitmap_data[0 + i * width *2 + j*2] = 0x0;
+                    bitmap_data[1 + i * width *2 + j*2] = 0x0;
+                } else {
+                    RGBApixel rgb_pixel = bmp_image.GetPixel(j,i);
+                    bitmap_data[0 + i * width *2 + j*2] = searchPixel(rgb_pixel);
+                    bitmap_data[1 + i * width *2 + j*2] = rgb_pixel.Alpha;
+                }
             }
         }
     }
@@ -518,12 +561,11 @@ void EifConverter::bmpFileToEifFile(const std::string& file_name, uint8_t depth,
             break;
         case 16: {
             image = new EifImage16bit;
-            if(palette_file_name.empty()) {
-                throw std::runtime_error("Incorrect palette path");
+            if(!palette_file_name.empty()) {
+                std::vector<uint8_t> palette;
+                FTUtils::fileToVector(palette_file_name, palette);
+                dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
             }
-            std::vector<uint8_t> palette;
-            FTUtils::fileToVector(palette_file_name, palette);
-            dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
         }
             break;
         case 32:
