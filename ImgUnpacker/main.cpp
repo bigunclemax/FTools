@@ -9,6 +9,8 @@
 #include <EifConverter.h>
 #include <cxxopts.hpp>
 #include <csv.h>
+#include <CRC.h>
+
 
 static const char* ITEM_IDX = "Idx";
 static const char* ITEM_NAME = "Name";
@@ -119,7 +121,9 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
                 << ITEM_NAME << ","
                 << ITEM_TYPE << ","
                 << ITEM_WIDTH << ","
-                << ITEM_HEIGHT << std::endl;
+                << ITEM_HEIGHT << ","
+                << "palette_crc16"
+                << std::endl;
 
     int zip_items = img_sec.GetItemsCount(ImageSection::RT_ZIP);
 
@@ -150,6 +154,8 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
 
         FTUtils::bufferToFile((eifs_path/file_stat.m_filename).string(), (char*)eif.data(), eif.size());
 
+        auto crc16 = CRC::Calculate((char*)eif.data()+0x10, 768, CRC::CRC_16_CCITTFALSE());
+
         //convert eif to bmp
         auto p = bmps_path/file_stat.m_filename;
         p.replace_extension(".bmp");
@@ -160,7 +166,8 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
             << file_stat.m_filename << ","
             << ToColorDepth((image_type)header_p->type) << ","
             << header_p->width << ","
-            << header_p->height
+            << header_p->height << ","
+            << hex << setw(4) << setfill('0') << uppercase << crc16 << std::resetiosflags(std::ios_base::basefield)
             << std::endl;
     }
 
@@ -175,7 +182,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         export_list << i << ","
                     << ttf_name << ","
                     << "TTF" << ","
-                    << 0 << ","  << 0 << std::endl;
+                    << 0 << ","  << 0 << "," << 0 << std::endl;
     }
 
     export_list.close();

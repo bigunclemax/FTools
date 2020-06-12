@@ -10,6 +10,7 @@ include_directories(../ImgSectionParser)
 include_directories(../EifViewer)
 include_directories(../utils)
 include_directories(../fast-cpp-csv-parser)
+include_directories(../CRCpp/inc)
 
 add_executable(imgunpkr main.cpp)
 if(NOT TARGET miniz)
