@@ -624,7 +624,7 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
     for(int k=0; k < f_count; ++k) {
 
         BMP bmp_image;
-        bmp_image.ReadFromFile(bmp_files[k].c_str());
+        bmp_image.ReadFromFile(bmp_files[k].string().c_str());
 
         auto width = (unsigned)bmp_image.TellWidth();
         auto height = (unsigned)bmp_image.TellHeight();
@@ -668,7 +668,7 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
         mapped_data.resize(num_pixels);
         exq_map_image(pExq, num_pixels, (unsigned char *)img.bmp_data.data(), mapped_data.data());
         eifs[i].setBitmap(img.w, img.h, eif_palette, mapped_data);
-        eifs[i].saveEif(out_dir/(bmp_files[i].stem().string()+".eif"));
+        eifs[i].saveEif((out_dir/(bmp_files[i].stem().string()+".eif")).string());
     }
 
     exq_free(pExq);
