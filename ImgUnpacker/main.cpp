@@ -154,20 +154,27 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
 
         FTUtils::bufferToFile((eifs_path/file_stat.m_filename).string(), (char*)eif.data(), eif.size());
 
-        auto crc16 = CRC::Calculate((char*)eif.data()+0x10, 768, CRC::CRC_16_CCITTFALSE());
-
         //convert eif to bmp
         auto p = bmps_path/file_stat.m_filename;
         p.replace_extension(".bmp");
         EIF::EifConverter::eifToBmpFile(eif, p.string());
 
+        //fill csv row
+        string crc = "0";
         auto header_p = reinterpret_cast<EIF::EifBaseHeader*>(eif.data());
+        if(header_p->type == EIF_TYPE_MULTICOLOR) {
+            auto crc16 = CRC::Calculate((char*)eif.data()+0x10, 768, CRC::CRC_16_CCITTFALSE());
+            stringstream pal_crc;
+            pal_crc << hex << setw(4) << setfill('0') << uppercase << crc16;
+            crc = pal_crc.str();
+        }
+
         export_list << i << ","
             << file_stat.m_filename << ","
             << ToColorDepth((image_type)header_p->type) << ","
             << header_p->width << ","
             << header_p->height << ","
-            << hex << setw(4) << setfill('0') << uppercase << crc16 << std::resetiosflags(std::ios_base::basefield)
+            << crc
             << std::endl;
     }
 
