@@ -7,12 +7,13 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
-//#include <bitmap_image.hpp>
+#include <filesystem>
 #include "EasyBMP/EasyBMP.h"
 
 #ifndef VBFEDIT_EIFIMAGE_H
 #define VBFEDIT_EIFIMAGE_H
 
+namespace fs = std::filesystem;
 namespace EIF {
 
 static const uint8_t EIF_SIGNATURE[] = {'E','B','D',0x10,'E','I','F'};
@@ -61,6 +62,7 @@ public:
     void saveEif(std::string file_name) override;
     int setPalette(const std::vector<uint8_t>& data);
     void savePalette(const std::string& file_name);
+    int setBitmap(unsigned width, unsigned height, const std::vector<uint8_t>& palette_data, const std::vector<uint8_t>& mapped_data);
 };
 
 class EifImage32bit: public EifImageBase {
@@ -78,6 +80,7 @@ public:
             const std::string& palette_file_name = "");
     static void bmpFileToEifFile(const std::string& file_name, uint8_t depth, const std::string& out_file_name,
             const std::string& palette_file_name = "");
+    static int createMultipaletteEifs(const fs::path& bmp_files, const fs::path& out_dir);
 };
 
 }

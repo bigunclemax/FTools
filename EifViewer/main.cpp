@@ -16,6 +16,7 @@ int main(int argc, char **argv)
 
         bool pack = false;
         bool unpack = false;
+        bool bulk = false;
         unsigned depth = 32;
 
         cxxopts::Options options("eifconverter", "Ford EDB.EIF converter");
@@ -26,6 +27,7 @@ int main(int argc, char **argv)
                 ("i,input","Input file", cxxopts::value<string>())
                 ("o,output","Output file", cxxopts::value<string>())
                 ("s,scheme","Color scheme file", cxxopts::value<string>())
+                ("B,bulk","Bulk mode", cxxopts::value<bool>(bulk))
                 ("h,help","Print help");
 
         options.parse_positional({"input"});
@@ -45,6 +47,13 @@ int main(int argc, char **argv)
         string out_file_name;
         if(result.count("output")){
             out_file_name = result["output"].as<string>();
+        }
+
+        if(bulk) {
+
+            EIF::EifConverter::createMultipaletteEifs(input_file_name, out_file_name);
+
+            return 0;
         }
 
         if(unpack) {
