@@ -11,6 +11,46 @@
 
 using namespace EIF;
 
+void EifImageBase::saveEifToVector(std::vector<uint8_t>& data) {
+
+    /* create header */
+    data.resize(sizeof(EifBaseHeader));
+    auto& header = *reinterpret_cast<struct EifBaseHeader*>(data.data());
+
+    /* copy signature */
+    for(auto i=0; i < sizeof(header.signature); i++){
+        data[i] = EIF_SIGNATURE[i];
+    }
+
+    /* set type */
+    header.type = type;
+
+    /* set height */
+    header.height = (uint16_t)height;
+
+    /* set width */
+    header.width = (uint16_t)width;
+
+    /* set length */
+    header.length = bitmap_data.size();
+
+    /* set palette */
+    if(EIF_TYPE_MULTICOLOR == type) {
+        for(int i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i++) {
+            data.push_back(palette[i]); //TODO: find a way how to remove palette dependency for 8 and 32 eif
+        }
+    }
+
+    /* set pixels */
+    data.insert(std::end(data), std::begin(bitmap_data), std::end(bitmap_data));
+}
+
+void EifImageBase::saveEif(std::string file_name) {
+    std::vector<uint8_t> eif_img;
+    saveEifToVector(eif_img);
+    FTUtils::bufferToFile(file_name, (char *)eif_img.data(), eif_img.size());
+}
+
 int EifImage8bit::openBmp(std::string file_name) {
 
     BMP bmp_image;
@@ -38,41 +78,6 @@ int EifImage8bit::openBmp(std::string file_name) {
     }
 
     return 0;
-}
-
-void EifImage8bit::saveEif(std::string file_name) {
-    /* create header */
-    std::vector<uint8_t> eif_img(sizeof(EifBaseHeader));
-    auto& header = *reinterpret_cast<struct EifBaseHeader*>(&eif_img[0]);
-
-    /* copy signature */
-    for(auto i=0; i < sizeof(header.signature); i++){
-        eif_img[i] = EIF_SIGNATURE[i];
-    }
-
-    /* set type */
-    header.type = EIF_TYPE_MONOCHROME;
-
-    /* set height */
-    header.height = (uint16_t)height;
-
-    /* set width */
-    header.width = (uint16_t)width;
-    auto aligned_width = (width % 4) ? (width/4 + 1)*4 : width;
-
-    /* set length */
-    header.length = aligned_width * header.height;
-
-    /* set pixels */
-    eif_img.insert(std::end(eif_img), std::begin(bitmap_data), std::end(bitmap_data));
-
-    std::ofstream out_file(file_name, std::ios::out | std::ios::binary);
-    if (!out_file) {
-        std::cout << "file: " << file_name << " can't be created" << std::endl;
-    } else {
-        out_file.write(reinterpret_cast<char *>(&eif_img[0]), eif_img.size());
-    }
-    out_file.close();
 }
 
 void EifImage8bit::saveBmp(std::string file_name){
@@ -304,45 +309,6 @@ int EifImage16bit::openBmp(std::string file_name) {
     return 0;
 }
 
-void EifImage16bit::saveEif(std::string file_name) {
-    /* create header */
-    std::vector<uint8_t> eif_img(sizeof(EifBaseHeader));
-    auto& header = *reinterpret_cast<struct EifBaseHeader*>(&eif_img[0]);
-
-    /* copy signature */
-    for(auto i=0; i < sizeof(header.signature); i++){
-        eif_img[i] = EIF_SIGNATURE[i];
-    }
-
-    /* set type */
-    header.type = EIF_TYPE_MULTICOLOR;
-
-    /* set height */
-    header.height = (uint16_t)height;
-
-    /* set width */
-    header.width = (uint16_t)width;
-
-    /* set length */
-    header.length = bitmap_data.size();
-
-    /* set palette */
-    for(int i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i++) {
-        eif_img.push_back(palette[i]);
-    }
-
-    /* set pixels */
-    eif_img.insert(std::end(eif_img), std::begin(bitmap_data), std::end(bitmap_data));
-
-    std::ofstream out_file(file_name, std::ios::out | std::ios::binary);
-    if (!out_file) {
-        std::cout << "file: " << file_name << " can't be created" << std::endl;
-    } else {
-        out_file.write(reinterpret_cast<char *>(&eif_img[0]), eif_img.size());
-    }
-    out_file.close();
-}
-
 void EifImage16bit::saveBmp(std::string file_name) {
 
     BMP bmp_image;
@@ -501,41 +467,6 @@ int EifImage32bit::openBmp(std::string file_name) {
     }
 
     return 0;
-}
-
-void EifImage32bit::saveEif(std::string file_name) {
-
-    /* create header */
-    std::vector<uint8_t> eif_img(sizeof(EifBaseHeader));
-    auto& header = *reinterpret_cast<struct EifBaseHeader*>(&eif_img[0]);
-
-    /* copy signature */
-    for(auto i=0; i < sizeof(header.signature); i++){
-        eif_img[i] = EIF_SIGNATURE[i];
-    }
-
-    /* set type */
-    header.type = EIF_TYPE_SUPERCOLOR;
-
-    /* set height */
-    header.height = (uint16_t)height;
-
-    /* set width */
-    header.width = (uint16_t)width;
-
-    /* set length */
-    header.length = header.width * header.height * 4;
-
-    /* set pixels */
-    eif_img.insert(std::end(eif_img), std::begin(bitmap_data), std::end(bitmap_data));
-
-    std::ofstream out_file(file_name, std::ios::out | std::ios::binary);
-    if (!out_file) {
-        std::cout << "file: " << file_name << " can't be created" << std::endl;
-    } else {
-        out_file.write(reinterpret_cast<char *>(&eif_img[0]), eif_img.size());
-    }
-    out_file.close();
 }
 
 void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name,
