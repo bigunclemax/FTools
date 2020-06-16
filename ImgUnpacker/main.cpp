@@ -252,7 +252,9 @@ int compressVector(const std::vector<uint8_t>& data, const char * data_name, std
 }
 
 struct csv_row {
-    uint32_t idx, type, crc;
+    uint32_t idx = 0;
+    uint32_t type = 0;
+    uint32_t crc = 0;
     std::string name;
 };
 
@@ -295,7 +297,7 @@ void CompressAndReplaceEIF(ImageSection& img_sec, int idx, const vector<uint8_t>
     //replace
     img_sec.ReplaceItem(ImageSection::RT_ZIP, idx, zip_bin,
     eif_header_p->width, eif_header_p->height, eif_header_p->type);
-    //TODO: add msg
+    cout << "Replace eif " << res_name << endl;
 }
 
 int RepackResources(const fs::path& config_path, ImageSection& img_sec, const std::vector<csv_row>& csv) {
@@ -310,27 +312,30 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
         auto& res_path = entry.path();
         auto res_name = res_path.filename();
 
-        //find in csv
-        auto res_csv_data = GetResCsvData(csv, res_name); //TODO: replace bmp to eif
-        if(res_csv_data.name.empty()) {
-            cerr << "Unknown resource " << res_name << endl;
-            return -1;
+        if(res_path.extension() == ".bmp") {
+            res_name.replace_extension(".eif");
         }
 
-        if(res_path.extension() == "ttf") {
-            //TODO: add msg
+        //find in csv
+        auto res_csv_data = GetResCsvData(csv, res_name.string());
+        if(res_csv_data.name.empty()) {
+            cerr << "Unknown resource " << res_name << " will be skipped" << endl;
+            continue;
+        }
+
+        if(res_path.extension() == ".ttf") {
             vector<uint8_t> res_bin;
             FTUtils::fileToVector(res_path, res_bin);
             img_sec.ReplaceItem(ImageSection::RT_TTF, res_csv_data.idx, res_bin);
+            cout << "Replace resource " << res_name << endl;
         }
 
-        if(res_path.extension() == "bmp") {
+        if(res_path.extension() == ".bmp") {
 
             if(res_csv_data.type == 16) {
 
-                vector<uint8_t> res_bin;
                 EIF::EifImage16bit eif;
-                eif.openBmp(res_path);
+                eif.openBmp(res_path.string());
                 eif16_map[res_csv_data.crc][res_csv_data.idx] = eif;
 
             } else {
@@ -343,22 +348,20 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
                 } else if(res_csv_data.type == 32) {
                     eif = new EIF::EifImage32bit();
                 } else {
-                    cerr << "Unknown resource type" << res_name << endl;
-                    return -1;
+                    throw runtime_error("Unknown resource type " + res_name.string());
                 }
 
                 vector<uint8_t> res_bin;
-                eif->openBmp(res_path);
+                eif->openBmp(res_path.string());
                 eif->saveEifToVector(res_bin);
                 delete eif;
 
-                CompressAndReplaceEIF(img_sec, res_csv_data.idx, res_bin, res_name);
+                CompressAndReplaceEIF(img_sec, res_csv_data.idx, res_bin, res_name.string());
             }
         }
 
-        if(res_path.extension() == "eif") {
-            //TODO:
-        }
+        //TODO: add direct replacement for EIF
+//        if(res_path.extension() == ".eif") {  }
     }
 
     for(auto& it : eif16_map) {
@@ -368,7 +371,6 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
         auto indexes = GetResWithSamePalette(csv, it.first);
         for (auto& idx : indexes) {
             if ( it.second.find(idx) == it.second.end() ) {
-                //TODO: msg eif getting from vbf
                 auto eif_bin = GetEIFfromImgSection(img_sec, idx);
                 EIF::EifImage16bit eif;
                 eif.openEif(eif_bin);
@@ -391,10 +393,6 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
 
     return 0;
 }
-
-//eif init from raw
-//eif getBitmap
-
 
 std::vector<csv_row> ReadCSV(const fs::path& config_path) {
 
