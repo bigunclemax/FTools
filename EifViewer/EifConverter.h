@@ -59,7 +59,6 @@ public:
 };
 
 class EifImage16bit: public EifImageBase {
-    std::vector<uint8_t> palette;
     uint8_t searchPixel(RGBApixel rgb_pixel);
 public:
     EifImage16bit() { type = EIF_TYPE_MULTICOLOR; };

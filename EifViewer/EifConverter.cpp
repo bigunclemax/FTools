@@ -257,8 +257,6 @@ int EifImage16bit::openBmp(std::string file_name) {
     bitmap_data.resize(num_pixels * 2);
 
     if(palette.empty()) {
-        std::cerr << "Create new palette" << std::endl;
-
         std::vector<uint8_t> pImage_data;
         pImage_data.reserve(num_pixels*4);
         for(auto i =0; i < height; i++){
