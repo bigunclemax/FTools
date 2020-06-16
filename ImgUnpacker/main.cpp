@@ -148,9 +148,9 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     export_list << ITEM_IDX << ","
                 << ITEM_NAME << ","
                 << ITEM_TYPE << ","
+                << ITEM_PALETTE_CRC << ","
                 << ITEM_WIDTH << ","
-                << ITEM_HEIGHT << ","
-                << ITEM_PALETTE_CRC
+                << ITEM_HEIGHT
                 << std::endl;
 
     int zip_items = img_sec.GetItemsCount(ImageSection::RT_ZIP);
@@ -187,9 +187,9 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         export_list << i << ","
             << eif_name << ","
             << ToColorDepth((image_type)header_p->type) << ","
+            << crc  << ","
             << header_p->width << ","
-            << header_p->height << ","
-            << crc
+            << header_p->height
             << std::endl;
     }
 
@@ -203,7 +203,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         FTUtils::bufferToFile((ttf_path/ttf_name).string(), (char*)item_bin.data(), item_bin.size());
         export_list << i << ","
                     << ttf_name << ","
-                    << "TTF" << ","
+                    << 0 << ","
                     << 0 << ","  << 0 << "," << 0 << std::endl;
     }
 
@@ -252,7 +252,7 @@ int compressVector(const std::vector<uint8_t>& data, const char * data_name, std
 }
 
 struct csv_row {
-    uint32_t idx, type, crc, width, height;
+    uint32_t idx, type, crc;
     std::string name;
 };
 
@@ -266,12 +266,12 @@ csv_row GetResCsvData(const std::vector<csv_row>& csv, const std::string& res_na
     return csv_data;
 }
 std::string GetNameFromIdx(const std::vector<csv_row>& csv, int idx) {
-    vector<uint32_t> indexes;
+
     for (auto& csv_row :csv) {
-        if(csv_row.crc == crc)
-            indexes.push_back(csv_row.idx);
+        if(csv_row.idx == idx && fs::path(csv_row.name).extension() == ".eif")
+            return csv_row.name;
     }
-    return indexes;
+    return "";
 }
 
 vector<uint32_t> GetResWithSamePalette(const std::vector<csv_row>& csv, const uint32_t crc) {
@@ -404,11 +404,11 @@ std::vector<csv_row> ReadCSV(const fs::path& config_path) {
     io::CSVReader<4> in(config_path.string());
     in.read_header(io::ignore_extra_column, ITEM_IDX, ITEM_NAME, ITEM_TYPE, ITEM_PALETTE_CRC);
 
-    std::string name;
-    uint32_t idx, type, crc;
+    std::string name, crc;
+    uint32_t idx, type;
 
-    while(in.read_row(idx, name,type, crc)) {
-        vec.push_back({idx,type,crc,name});
+    while(in.read_row(idx, name, type, crc)) {
+        vec.push_back({idx,type, (uint32_t)std::stoi(crc, nullptr, 16) ,name});
     }
 
     return vec;
