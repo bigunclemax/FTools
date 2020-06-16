@@ -17,6 +17,8 @@ static const char* ITEM_NAME = "Name";
 static const char* ITEM_WIDTH = "Width";
 static const char* ITEM_HEIGHT = "Height";
 static const char* ITEM_TYPE = "Depth";
+static const char* ITEM_PALETTE_CRC = "palette_crc16";
+static const char* CUSTOM_DIR = "custom";
 
 namespace fs = std::filesystem;
 
@@ -97,6 +99,32 @@ void parse_opts(int argc, char **argv, Opts& opts) {
     }
 }
 
+vector<uint8_t> GetEIFfromImgSection(ImageSection& img_sec, int idx, std::string* p_eif_name = nullptr) {
+
+    std::vector<uint8_t> img_zip_bin;
+    img_sec.GetItemData(ImageSection::RT_ZIP, idx, img_zip_bin);
+
+    // unzip eif
+    mz_zip_archive zip_archive;
+    memset(&zip_archive, 0, sizeof(zip_archive));
+    if (!mz_zip_reader_init_mem(&zip_archive,
+    (const void *)img_zip_bin.data(), img_zip_bin.size(), 0))
+    {
+        throw runtime_error("Can't get image name form archive");
+    }
+    mz_zip_archive_file_stat file_stat;
+    mz_zip_reader_file_stat(&zip_archive, 0 , &file_stat);
+    vector<uint8_t> eif(file_stat.m_uncomp_size);
+    mz_zip_reader_extract_to_mem(&zip_archive, 0, (void *)eif.data(), eif.size(), 0);
+    mz_zip_reader_end(&zip_archive);
+
+    if(nullptr != p_eif_name) {
+        *p_eif_name = file_stat.m_filename;
+    }
+
+    return eif;
+}
+
 int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
 
     //unpack vbf
@@ -122,7 +150,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
                 << ITEM_TYPE << ","
                 << ITEM_WIDTH << ","
                 << ITEM_HEIGHT << ","
-                << "palette_crc16"
+                << ITEM_PALETTE_CRC
                 << std::endl;
 
     int zip_items = img_sec.GetItemsCount(ImageSection::RT_ZIP);
@@ -132,30 +160,17 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
 
     fs::create_directory(eifs_path);
     fs::create_directory(bmps_path);
+    fs::create_directory(out_path/CUSTOM_DIR);
 
     for(int i = 0; i < zip_items; i++) {
-        std::vector<uint8_t> img_zip_bin;
-        img_sec.GetItemData(ImageSection::RT_ZIP, i, img_zip_bin);
 
-        // unzip eif
-        mz_zip_archive zip_archive;
-        memset(&zip_archive, 0, sizeof(zip_archive));
-        if (!mz_zip_reader_init_mem(&zip_archive,
-                                    (const void *)img_zip_bin.data(), img_zip_bin.size(), 0))
-        {
-            throw runtime_error("Can't get image name form archive");
-        }
-        unsigned file_index =0;
-        mz_zip_archive_file_stat file_stat;
-        mz_zip_reader_file_stat(&zip_archive, file_index , &file_stat);
-        vector<uint8_t> eif(file_stat.m_uncomp_size);
-        mz_zip_reader_extract_to_mem(&zip_archive, file_index, (void *)eif.data(), eif.size(), 0);
-        mz_zip_reader_end(&zip_archive);
+        std::string eif_name;
+        auto eif = GetEIFfromImgSection(img_sec, i, &eif_name);
 
-        FTUtils::bufferToFile((eifs_path/file_stat.m_filename).string(), (char*)eif.data(), eif.size());
+        FTUtils::bufferToFile((eifs_path/eif_name).string(), (char*)eif.data(), eif.size());
 
         //convert eif to bmp
-        auto p = bmps_path/file_stat.m_filename;
+        auto p = bmps_path/eif_name;
         p.replace_extension(".bmp");
         EIF::EifConverter::eifToBmpFile(eif, p.string());
 
@@ -170,7 +185,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
         }
 
         export_list << i << ","
-            << file_stat.m_filename << ","
+            << eif_name << ","
             << ToColorDepth((image_type)header_p->type) << ","
             << header_p->width << ","
             << header_p->height << ","
@@ -236,6 +251,169 @@ int compressVector(const std::vector<uint8_t>& data, const char * data_name, std
     return 0;
 }
 
+struct csv_row {
+    uint32_t idx, type, crc, width, height;
+    std::string name;
+};
+
+csv_row GetResCsvData(const std::vector<csv_row>& csv, const std::string& res_name) {
+
+    csv_row csv_data;
+    for (auto& csv_row :csv) {
+        if(csv_row.name == res_name)
+            csv_data = csv_row;
+    }
+    return csv_data;
+}
+std::string GetNameFromIdx(const std::vector<csv_row>& csv, int idx) {
+    vector<uint32_t> indexes;
+    for (auto& csv_row :csv) {
+        if(csv_row.crc == crc)
+            indexes.push_back(csv_row.idx);
+    }
+    return indexes;
+}
+
+vector<uint32_t> GetResWithSamePalette(const std::vector<csv_row>& csv, const uint32_t crc) {
+    vector<uint32_t> indexes;
+    for (auto& csv_row :csv) {
+        if(csv_row.crc == crc)
+            indexes.push_back(csv_row.idx);
+    }
+    return indexes;
+}
+
+void CompressAndReplaceEIF(ImageSection& img_sec, int idx, const vector<uint8_t>& res_bin, const std::string& res_name) {
+
+    //get header data
+    auto eif_header_p = reinterpret_cast<const EIF::EifBaseHeader*>(res_bin.data());
+
+    //compress
+    vector<uint8_t> zip_bin;
+    compressVector(res_bin, res_name.c_str(), zip_bin);
+
+    //replace
+    img_sec.ReplaceItem(ImageSection::RT_ZIP, idx, zip_bin,
+    eif_header_p->width, eif_header_p->height, eif_header_p->type);
+    //TODO: add msg
+}
+
+int RepackResources(const fs::path& config_path, ImageSection& img_sec, const std::vector<csv_row>& csv) {
+
+    fs::path custom_dir = config_path.parent_path()/CUSTOM_DIR;
+
+    std::map <int, std::map<int, EIF::EifImage16bit>> eif16_map;
+
+    // for each resources
+    for (const auto & entry : fs::directory_iterator(custom_dir)) {
+
+        auto& res_path = entry.path();
+        auto res_name = res_path.filename();
+
+        //find in csv
+        auto res_csv_data = GetResCsvData(csv, res_name); //TODO: replace bmp to eif
+        if(res_csv_data.name.empty()) {
+            cerr << "Unknown resource " << res_name << endl;
+            return -1;
+        }
+
+        if(res_path.extension() == "ttf") {
+            //TODO: add msg
+            vector<uint8_t> res_bin;
+            FTUtils::fileToVector(res_path, res_bin);
+            img_sec.ReplaceItem(ImageSection::RT_TTF, res_csv_data.idx, res_bin);
+        }
+
+        if(res_path.extension() == "bmp") {
+
+            if(res_csv_data.type == 16) {
+
+                vector<uint8_t> res_bin;
+                EIF::EifImage16bit eif;
+                eif.openBmp(res_path);
+                eif16_map[res_csv_data.crc][res_csv_data.idx] = eif;
+
+            } else {
+
+                // create eif from BMP and save it to vector
+                EIF::EifImageBase* eif;
+
+                if(res_csv_data.type == 8) {
+                    eif = new EIF::EifImage8bit();
+                } else if(res_csv_data.type == 32) {
+                    eif = new EIF::EifImage32bit();
+                } else {
+                    cerr << "Unknown resource type" << res_name << endl;
+                    return -1;
+                }
+
+                vector<uint8_t> res_bin;
+                eif->openBmp(res_path);
+                eif->saveEifToVector(res_bin);
+                delete eif;
+
+                CompressAndReplaceEIF(img_sec, res_csv_data.idx, res_bin, res_name);
+            }
+        }
+
+        if(res_path.extension() == "eif") {
+            //TODO:
+        }
+    }
+
+    for(auto& it : eif16_map) {
+
+        std::vector<EIF::EifImage16bit*> eifs;
+
+        auto indexes = GetResWithSamePalette(csv, it.first);
+        for (auto& idx : indexes) {
+            if ( it.second.find(idx) == it.second.end() ) {
+                //TODO: msg eif getting from vbf
+                auto eif_bin = GetEIFfromImgSection(img_sec, idx);
+                EIF::EifImage16bit eif;
+                eif.openEif(eif_bin);
+                it.second[idx] = eif;
+            }
+            eifs.push_back(&it.second[idx]);
+        }
+
+        //calc multi palette
+        EIF::EifConverter::createMultipaletteEifs(eifs);
+
+        //pack
+        for(auto& itt : it.second) {
+            std::string eif_name = GetNameFromIdx(csv, itt.first);
+            vector<uint8_t> res_bin;
+            itt.second.saveEifToVector(res_bin);
+            CompressAndReplaceEIF(img_sec, itt.first, res_bin, eif_name);
+        }
+    }
+
+    return 0;
+}
+
+//eif init from raw
+//eif getBitmap
+
+
+std::vector<csv_row> ReadCSV(const fs::path& config_path) {
+
+    std::vector<csv_row> vec;
+    vec.reserve(1310);
+
+    io::CSVReader<4> in(config_path.string());
+    in.read_header(io::ignore_extra_column, ITEM_IDX, ITEM_NAME, ITEM_TYPE, ITEM_PALETTE_CRC);
+
+    std::string name;
+    uint32_t idx, type, crc;
+
+    while(in.read_row(idx, name,type, crc)) {
+        vec.push_back({idx,type,crc,name});
+    }
+
+    return vec;
+}
+
 int PackImg(const fs::path& config_path, const fs::path& vbf_path, const fs::path& out_path) {
 
     //open vbf and get image section
@@ -253,33 +431,10 @@ int PackImg(const fs::path& config_path, const fs::path& vbf_path, const fs::pat
     ImageSection img_sec;
     img_sec.Parse(img_sec_bin);
 
-    io::CSVReader<3> in(config_path.string());
-    in.read_header(io::ignore_extra_column, ITEM_IDX, ITEM_NAME, ITEM_TYPE);
-    std::string name, type;
-    uint32_t idx;
+    auto csv = ReadCSV(config_path);
 
-    while(in.read_row(idx, name,type)) {
-
-        //open resource file
-        fs::path file_path = config_path.parent_path() / ((type == "TTF") ? "ttf" : "eif") / name;
-        vector<uint8_t> file_bin;
-        FTUtils::fileToVector(file_path, file_bin);
-
-        if(type == "TTF") {
-            img_sec.ReplaceItem(ImageSection::RT_TTF, idx, file_bin);
-        } else {
-            //get header data
-            auto eif_header_p = reinterpret_cast<const EIF::EifBaseHeader*>(file_bin.data());
-
-            //compress
-            vector<uint8_t> zip_bin;
-            compressVector(file_bin,name.c_str(),zip_bin);
-
-            //replace
-            img_sec.ReplaceItem(ImageSection::RT_ZIP, idx, zip_bin,
-                                eif_header_p->width, eif_header_p->height, eif_header_p->type);
-        }
-    }
+    //open custom dif
+    RepackResources(config_path, img_sec, csv);
 
     img_sec.SaveToVector(img_sec_bin);
 

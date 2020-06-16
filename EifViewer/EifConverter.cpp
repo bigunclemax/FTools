@@ -151,6 +151,12 @@ int EifImage8bit::openEif(const std::vector<uint8_t>& data) {
     return 0;
 }
 
+EifImage16bit::EifImage16bit(unsigned int w, unsigned int h, const std::vector<uint8_t> &pal,
+                             const std::vector<uint8_t> &bitmap)
+{
+    type = EIF_TYPE_MONOCHROME;
+}
+
 int EifImage16bit::openEif(const std::vector<uint8_t> &data) {
 
     if(data.size() < sizeof(EifBaseHeader)){
@@ -329,6 +335,28 @@ void EifImage16bit::saveBmp(std::string file_name) {
     }
 
     bmp_image.WriteToFile(file_name.c_str());
+}
+
+void EifImage16bit::getBitmap(std::vector<uint8_t> &data) {
+
+    data.resize(0);
+    data.reserve(height * width * 4);
+    for(auto i =0; i < height; i++){
+        for(auto j=0; j < width; j++){
+
+            auto color_idx = *(bitmap_data.data() + (i * width + j) * 2 + 0);
+            uint8_t A = *(bitmap_data.data() + (i * width + j) * 2 + 1);
+            uint8_t R = palette[color_idx * 3 + 0];
+            uint8_t G = palette[color_idx * 3 + 1];
+            uint8_t B = palette[color_idx * 3 + 2];
+
+            data.push_back(R);
+            data.push_back(G);
+            data.push_back(B);
+            data.push_back(A);
+
+        }
+    }
 }
 
 int EifImage16bit::setPalette(const std::vector<uint8_t> &data) {
@@ -600,9 +628,55 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
             }
         }
 
-        EifImage16bit eif;
-        eif.setBitmap(img.w, img.h, eif_palette, bitmap_data);
+        EifImage16bit eif(img.w, img.h, eif_palette, bitmap_data);
         eif.saveEif((out_dir / (bmp_files[f].stem().string() + ".eif")).string());
+    }
+
+    exq_free(pExq);
+
+    return 0;
+}
+
+int EifConverter::createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs) {
+
+    exq_data *pExq = exq_init();
+    exq_no_transparency(pExq);
+    unsigned char pPalette[EIF_MULTICOLOR_NUM_COLORS * 4] = {};
+
+    std::vector<std::vector<uint8_t>> eifs_bitmaps(eifs.size());
+
+    for (int i =0; i < eifs.size(); ++i) {
+        eifs[i]->getBitmap(eifs_bitmaps[i]);
+        exq_feed(pExq, (unsigned char *)eifs_bitmaps[i].data(), (int)eifs_bitmaps[i].size()/4);
+    }
+
+    exq_quantize_hq(pExq, EIF_MULTICOLOR_NUM_COLORS); //TODO: add param for fast mode
+    exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
+
+    //convert palette
+    std::vector<uint8_t> eif_palette;
+    eif_palette.resize(EIF_MULTICOLOR_NUM_COLORS * 3);
+    for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
+        eif_palette[i * 3 + 0] = pPalette[i * 4 + 0];
+        eif_palette[i * 3 + 1] = pPalette[i * 4 + 1];
+        eif_palette[i * 3 + 2] = pPalette[i * 4 + 2];
+    }
+
+    std::vector<uint8_t> mapped_data;
+    for (int i =0; i < eifs.size(); ++i) {
+
+        auto num_pixels = eifs_bitmaps[i].size()/4;
+        mapped_data.resize(num_pixels);
+        exq_map_image(pExq, num_pixels, (unsigned char *)eifs_bitmaps[i].data(), mapped_data.data());
+
+        std::vector<uint8_t> bitmap_data(num_pixels * 2);
+        for(int pixel_idx =0; pixel_idx < num_pixels; ++ pixel_idx) {
+            bitmap_data[pixel_idx * 2] = mapped_data[pixel_idx];
+            bitmap_data[pixel_idx * 2 + 1] = eifs_bitmaps[i][pixel_idx * 4 + 3];
+        }
+
+        eifs[i]->setBitmap(eif_palette, bitmap_data);
+
     }
 
     exq_free(pExq);
