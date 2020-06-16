@@ -155,6 +155,10 @@ EifImage16bit::EifImage16bit(unsigned int w, unsigned int h, const std::vector<u
                              const std::vector<uint8_t> &bitmap)
 {
     type = EIF_TYPE_MONOCHROME;
+    width = w;
+    height = h;
+    palette = pal;
+    bitmap_data = bitmap;
 }
 
 int EifImage16bit::openEif(const std::vector<uint8_t> &data) {
@@ -381,12 +385,8 @@ void EifImage16bit::savePalette(const std::string& file_name) {
     FTUtils::bufferToFile(file_name, (char *)palette.data(), EIF_MULTICOLOR_PALETTE_SIZE);
 }
 
-int EifImage16bit::setBitmap(unsigned int w, unsigned int h, const std::vector <uint8_t> &p,
-                             const std::vector <uint8_t> &data) {
-
-    width = w;
-    height = h;
-    palette = p;
+int EifImage16bit::setBitmap(const std::vector <uint8_t> &data)
+{
     bitmap_data = data;
 
     return 0;
@@ -655,7 +655,7 @@ int EifConverter::createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs
 
     //convert palette
     std::vector<uint8_t> eif_palette;
-    eif_palette.resize(EIF_MULTICOLOR_NUM_COLORS * 3);
+    eif_palette.resize(EIF_MULTICOLOR_PALETTE_SIZE);
     for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
         eif_palette[i * 3 + 0] = pPalette[i * 4 + 0];
         eif_palette[i * 3 + 1] = pPalette[i * 4 + 1];
@@ -675,8 +675,8 @@ int EifConverter::createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs
             bitmap_data[pixel_idx * 2 + 1] = eifs_bitmaps[i][pixel_idx * 4 + 3];
         }
 
-        eifs[i]->setBitmap(eif_palette, bitmap_data);
-
+        eifs[i]->setPalette(eif_palette);
+        eifs[i]->setBitmap(bitmap_data);
     }
 
     exq_free(pExq);

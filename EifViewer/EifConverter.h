@@ -63,12 +63,15 @@ class EifImage16bit: public EifImageBase {
     uint8_t searchPixel(RGBApixel rgb_pixel);
 public:
     EifImage16bit() { type = EIF_TYPE_MULTICOLOR; };
+    EifImage16bit(unsigned int w, unsigned int h, const std::vector<uint8_t> &pal,
+                                 const std::vector<uint8_t> &bitmap);
     int openEif(const std::vector<uint8_t>& data) override;
     void saveBmp(std::string file_name) override;
     int openBmp(std::string file_name) override;
     int setPalette(const std::vector<uint8_t>& data);
     void savePalette(const std::string& file_name);
-    int setBitmap(unsigned width, unsigned height, const std::vector<uint8_t>& palette_data, const std::vector<uint8_t>& mapped_data);
+    int setBitmap(const std::vector<uint8_t>& mapped_data);
+    void getBitmap(std::vector<uint8_t>& data);
 };
 
 class EifImage32bit: public EifImageBase {
@@ -87,6 +90,7 @@ public:
     static void bmpFileToEifFile(const std::string& file_name, uint8_t depth, const std::string& out_file_name,
             const std::string& palette_file_name = "");
     static int createMultipaletteEifs(const fs::path& bmp_files, const fs::path& out_dir);
+    static int createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs);
 };
 
 }
