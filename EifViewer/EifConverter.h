@@ -14,6 +14,8 @@
 #define VBFEDIT_EIFIMAGE_H
 
 namespace fs = std::filesystem;
+using namespace std;
+
 namespace EIF {
 
 static const uint8_t EIF_SIGNATURE[] = {'E','B','D',0x10,'E','I','F'};
@@ -36,60 +38,66 @@ struct EifBaseHeader {
 
 class EifImageBase {
 protected:
-    unsigned width;
-    unsigned height;
-    std::vector<uint8_t> bitmap_data;
-    std::vector<uint8_t> palette;
-    EIF_TYPE type;
+    unsigned width =0;
+    unsigned height =0;
+    vector<uint8_t> bitmap_data;
+    virtual void store_palette(vector<uint8_t>& data) {};
 public:
-    virtual int openEif(const std::vector<uint8_t>& data) = 0;
-    virtual int openBmp(std::string fileName) = 0;
-    virtual void saveBmp(std::string fileName) = 0;
-    virtual void saveEif(std::string fileName);
-    virtual void saveEifToVector(std::vector<uint8_t>& data);
+    virtual int openEif(const vector<uint8_t>& data) = 0;
+    virtual int getType() = 0;
+    virtual int openBmp(string fileName) = 0;
+    virtual void saveBmp(string fileName) = 0;
+    virtual void saveEif(string fileName);
+    virtual void saveEifToVector(vector<uint8_t>& data);
     virtual ~EifImageBase()= default;
 };
 
 class EifImage8bit: public EifImageBase {
+    EIF_TYPE type = EIF_TYPE_MONOCHROME;
 public:
-    EifImage8bit() { type = EIF_TYPE_MONOCHROME; };
-    int openEif(const std::vector<uint8_t>& data) override;
-    void saveBmp(std::string file_name) override;
-    int openBmp(std::string file_name) override;
+    inline int getType() override { return type; };
+    int openEif(const vector<uint8_t>& data) override;
+    void saveBmp(string file_name) override;
+    int openBmp(string file_name) override;
 };
 
 class EifImage16bit: public EifImageBase {
+    EIF_TYPE type = EIF_TYPE_MULTICOLOR;
+    vector<uint8_t> palette;
     uint8_t searchPixel(RGBApixel rgb_pixel);
+    void store_palette(vector<uint8_t> &data) override;
 public:
-    EifImage16bit() { type = EIF_TYPE_MULTICOLOR; };
-    EifImage16bit(unsigned int w, unsigned int h, const std::vector<uint8_t> &pal,
-                                 const std::vector<uint8_t> &bitmap);
-    int openEif(const std::vector<uint8_t>& data) override;
-    void saveBmp(std::string file_name) override;
-    int openBmp(std::string file_name) override;
-    int setPalette(const std::vector<uint8_t>& data);
-    void savePalette(const std::string& file_name);
-    int setBitmap(const std::vector<uint8_t>& mapped_data);
-    void getBitmap(std::vector<uint8_t>& data);
+    inline int getType() override { return type; };
+    EifImage16bit() = default;
+    EifImage16bit(unsigned int w, unsigned int h, const vector<uint8_t> &pal,
+                                 const vector<uint8_t> &bitmap);
+    int openEif(const vector<uint8_t>& data) override;
+    void saveBmp(string file_name) override;
+    int openBmp(string file_name) override;
+    int setPalette(const vector<uint8_t>& data);
+    void savePalette(const string& file_name);
+    int setBitmap(const vector<uint8_t>& mapped_data);
+    void getBitmap(vector<uint8_t>& data);
 };
 
 class EifImage32bit: public EifImageBase {
+    EIF_TYPE type = EIF_TYPE_SUPERCOLOR;
 public:
-    EifImage32bit() { type = EIF_TYPE_SUPERCOLOR; };
-    int openEif(const std::vector<uint8_t>& data) override;
-    int openBmp(std::string file_name) override;
-    void saveBmp(std::string file_name) override;
+    inline int getType() override { return type; };
+    int openEif(const vector<uint8_t>& data) override;
+    int openBmp(string file_name) override;
+    void saveBmp(string file_name) override;
 };
 
 class EifConverter {
 
 public:
-    static void eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name,
-            const std::string& palette_file_name = "");
-    static void bmpFileToEifFile(const std::string& file_name, uint8_t depth, const std::string& out_file_name,
-            const std::string& palette_file_name = "");
+    static void eifToBmpFile(const vector<uint8_t>& data, const string& out_file_name,
+            const string& palette_file_name = "");
+    static void bmpFileToEifFile(const string& file_name, uint8_t depth, const string& out_file_name,
+            const string& palette_file_name = "");
     static int createMultipaletteEifs(const fs::path& bmp_files, const fs::path& out_dir);
-    static int createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs);
+    static int createMultipaletteEifs(const vector<EifImage16bit*>& eifs);
 };
 
 }

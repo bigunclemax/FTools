@@ -42,6 +42,27 @@ namespace FTUtils {
         file.close();
     }
 
+    inline std::vector<uint8_t> fileToVector(const fs::path& file_path) {
+
+        std::vector<uint8_t> data;
+
+        std::ifstream file(file_path, std::ios::binary | std::ios::ate);
+        if(file.fail()) {
+            throw std::runtime_error("Can't open file '" + file_path.string() + "'");
+        }
+        auto file_sz = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        data.resize(file_sz);
+        if (!file.read(reinterpret_cast<char *>(data.data()), file_sz)) {
+            throw std::runtime_error("Can't read file '" + file_path.string() + "'");
+        }
+
+        file.close();
+
+        return data;
+    }
+
 }
 
 #endif //FORDTOOLS_UTILS_H

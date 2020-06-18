@@ -11,7 +11,7 @@
 
 using namespace EIF;
 
-void EifImageBase::saveEifToVector(std::vector<uint8_t>& data) {
+void EifImageBase::saveEifToVector(vector<uint8_t>& data) {
 
     /* create header */
     data.resize(sizeof(EifBaseHeader));
@@ -23,7 +23,7 @@ void EifImageBase::saveEifToVector(std::vector<uint8_t>& data) {
     }
 
     /* set type */
-    header.type = type;
+    header.type = getType();
 
     /* set height */
     header.height = (uint16_t)height;
@@ -35,23 +35,19 @@ void EifImageBase::saveEifToVector(std::vector<uint8_t>& data) {
     header.length = bitmap_data.size();
 
     /* set palette */
-    if(EIF_TYPE_MULTICOLOR == type) {
-        for(int i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i++) {
-            data.push_back(palette[i]); //TODO: find a way how to remove palette dependency for 8 and 32 eif
-        }
-    }
+    store_palette(data);
 
     /* set pixels */
-    data.insert(std::end(data), std::begin(bitmap_data), std::end(bitmap_data));
+    data.insert(end(data), begin(bitmap_data), end(bitmap_data));
 }
 
-void EifImageBase::saveEif(std::string file_name) {
-    std::vector<uint8_t> eif_img;
+void EifImageBase::saveEif(string file_name) {
+    vector<uint8_t> eif_img;
     saveEifToVector(eif_img);
     FTUtils::bufferToFile(file_name, (char *)eif_img.data(), eif_img.size());
 }
 
-int EifImage8bit::openBmp(std::string file_name) {
+int EifImage8bit::openBmp(string file_name) {
 
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.c_str());
@@ -80,7 +76,7 @@ int EifImage8bit::openBmp(std::string file_name) {
     return 0;
 }
 
-void EifImage8bit::saveBmp(std::string file_name){
+void EifImage8bit::saveBmp(string file_name){
 
     BMP bmp_image;
     bmp_image.SetSize((int)width, (int)height);
@@ -102,45 +98,45 @@ void EifImage8bit::saveBmp(std::string file_name){
     bmp_image.WriteToFile(file_name.c_str());
 }
 
-int EifImage8bit::openEif(const std::vector<uint8_t>& data) {
+int EifImage8bit::openEif(const vector<uint8_t>& data) {
 
     if(data.size() < sizeof(EifBaseHeader)){
-        throw std::runtime_error("EIF wrong header length");
+        throw runtime_error("EIF wrong header length");
     }
     const EifBaseHeader &header = *reinterpret_cast<const struct EifBaseHeader*>(&data[0]);
 
     /* check signature */
     for(auto i=0; i < sizeof(header.signature); i++){
         if(EIF_SIGNATURE[i] != header.signature[i]){
-            throw std::runtime_error("EIF wrong signature");
+            throw runtime_error("EIF wrong signature");
         }
     }
 
     /* check type */
     if(EIF_TYPE_MONOCHROME != header.type){
-        throw std::runtime_error("EIF wrong type");
+        throw runtime_error("EIF wrong type");
     }
 
     auto data_offset = sizeof(EifBaseHeader);
     if(header.length > (data.size() - data_offset)){
-        throw std::runtime_error("EIF wrong data length");
+        throw runtime_error("EIF wrong data length");
     }
 
     //get aligned width
     auto aligned4_width = header.length / header.height;
     if(aligned4_width % sizeof(uint32_t)){
-        throw std::runtime_error("EIF not aligned width");
+        throw runtime_error("EIF not aligned width");
     }
 
     if(aligned4_width < header.width){
-        throw std::runtime_error("EIF wrong actual width");
+        throw runtime_error("EIF wrong actual width");
     }
 
     bitmap_data.clear();
     bitmap_data.reserve(header.height * header.width);
     for (auto i =data_offset; i < data.size(); i+=aligned4_width) {
 
-        bitmap_data.insert(std::end(bitmap_data),
+        bitmap_data.insert(end(bitmap_data),
                            data.begin() + i,
                            data.begin() + i + header.width);
     }
@@ -151,61 +147,66 @@ int EifImage8bit::openEif(const std::vector<uint8_t>& data) {
     return 0;
 }
 
-EifImage16bit::EifImage16bit(unsigned int w, unsigned int h, const std::vector<uint8_t> &pal,
-                             const std::vector<uint8_t> &bitmap)
+EifImage16bit::EifImage16bit(unsigned int w, unsigned int h, const vector<uint8_t> &pal,
+                             const vector<uint8_t> &bitmap)
 {
-    type = EIF_TYPE_MONOCHROME;
     width = w;
     height = h;
     palette = pal;
     bitmap_data = bitmap;
 }
 
-int EifImage16bit::openEif(const std::vector<uint8_t> &data) {
+void EifImage16bit::store_palette(vector<uint8_t> &data) {
+    for(int i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i++) {
+        data.push_back(palette[i]);
+    }
+}
+
+int EifImage16bit::openEif(const vector<uint8_t> &data) {
 
     if(data.size() < sizeof(EifBaseHeader)){
-        throw std::runtime_error("EIF wrong header length");
+        throw runtime_error("EIF wrong header length");
     }
     const EifBaseHeader &header = *reinterpret_cast<const struct EifBaseHeader*>(&data[0]);
 
     /* check signature */
     for(auto i=0; i < sizeof(header.signature); i++){
         if(EIF_SIGNATURE[i] != header.signature[i]){
-            throw std::runtime_error("EIF wrong signature");
+            throw runtime_error("EIF wrong signature");
         }
     }
 
     /* check type */
     if(EIF_TYPE_MULTICOLOR != header.type){
-        throw std::runtime_error("EIF wrong type");
+        throw runtime_error("EIF wrong type");
     }
 
     auto data_offset = sizeof(EifBaseHeader) + EIF_MULTICOLOR_PALETTE_SIZE;
     if(header.length > (data.size() - data_offset)){
-        throw std::runtime_error("EIF wrong data length");
+        throw runtime_error("EIF wrong data length");
     }
 
     //get aligned width
     auto aligned16_width = header.length / header.height;
     if(aligned16_width % sizeof(uint16_t)){
-        throw std::runtime_error("EIF not aligned width");
+        throw runtime_error("EIF not aligned width");
     }
 
     if((aligned16_width / sizeof(uint16_t)) < header.width){
-        throw std::runtime_error("EIF wrong actual width");
+        throw runtime_error("EIF wrong actual width");
     }
 
     bitmap_data.clear();
     bitmap_data.reserve(header.height * header.width);
     for (auto i =data_offset; i < data.size(); i+=aligned16_width) {
-        bitmap_data.insert(std::end(bitmap_data),
+        bitmap_data.insert(end(bitmap_data),
                            data.begin() + i,
                            data.begin() + i + header.width * sizeof(uint16_t));
     }
 
     if(palette.empty()) {
         palette.resize(EIF_MULTICOLOR_PALETTE_SIZE);
-        std::copy(
+        copy(
                 data.begin() + sizeof(EifBaseHeader),
                 data.begin() + sizeof(EifBaseHeader) + EIF_MULTICOLOR_PALETTE_SIZE,
                 palette.begin());
@@ -219,7 +220,7 @@ int EifImage16bit::openEif(const std::vector<uint8_t> &data) {
 
 uint8_t EifImage16bit::searchPixel(RGBApixel rgb_pixel) {
 
-    double color_distance = std::numeric_limits<double>::max();
+    double color_distance = numeric_limits<double>::max();
     uint8_t closest_index =0;
 
     for(auto i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i+=3) {
@@ -244,7 +245,7 @@ uint8_t EifImage16bit::searchPixel(RGBApixel rgb_pixel) {
     return closest_index;
 }
 
-int EifImage16bit::openBmp(std::string file_name) {
+int EifImage16bit::openBmp(string file_name) {
 
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.c_str());
@@ -257,7 +258,7 @@ int EifImage16bit::openBmp(std::string file_name) {
     bitmap_data.resize(num_pixels * 2);
 
     if(palette.empty()) {
-        std::vector<uint8_t> pImage_data;
+        vector<uint8_t> pImage_data;
         pImage_data.reserve(num_pixels*4);
         for(auto i =0; i < height; i++){
             for(auto j=0; j < width; j++){
@@ -270,7 +271,7 @@ int EifImage16bit::openBmp(std::string file_name) {
         }
 
         unsigned char pPalette[EIF_MULTICOLOR_NUM_COLORS * 4];
-        std::vector<uint8_t> pOut(num_pixels);
+        vector<uint8_t> pOut(num_pixels);
 
         exq_data *pExq;
         pExq = exq_init();
@@ -298,7 +299,7 @@ int EifImage16bit::openBmp(std::string file_name) {
         }
 
     } else {
-        std::cerr << "Use palette form file: " << file_name << std::endl;
+        cerr << "Use palette form file: " << file_name << endl;
         for(auto i =0; i < height; i++){
             for(auto j=0; j < width; j++){
                 if(j >= width){
@@ -316,7 +317,7 @@ int EifImage16bit::openBmp(std::string file_name) {
     return 0;
 }
 
-void EifImage16bit::saveBmp(std::string file_name) {
+void EifImage16bit::saveBmp(string file_name) {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
@@ -339,7 +340,7 @@ void EifImage16bit::saveBmp(std::string file_name) {
     bmp_image.WriteToFile(file_name.c_str());
 }
 
-void EifImage16bit::getBitmap(std::vector<uint8_t> &data) {
+void EifImage16bit::getBitmap(vector<uint8_t> &data) {
 
     data.resize(0);
     data.reserve(height * width * 4);
@@ -361,10 +362,10 @@ void EifImage16bit::getBitmap(std::vector<uint8_t> &data) {
     }
 }
 
-int EifImage16bit::setPalette(const std::vector<uint8_t> &data) {
+int EifImage16bit::setPalette(const vector<uint8_t> &data) {
 
     if(data.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
-        std::cerr << "Error: palette wrong size" << std::endl;
+        cerr << "Error: palette wrong size" << endl;
         return -1;
     }
 
@@ -373,62 +374,62 @@ int EifImage16bit::setPalette(const std::vector<uint8_t> &data) {
     return 0;
 }
 
-void EifImage16bit::savePalette(const std::string& file_name) {
+void EifImage16bit::savePalette(const string& file_name) {
 
     if(palette.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
-        std::cerr << "Error: palette wrong size" << std::endl;
+        cerr << "Error: palette wrong size" << endl;
         return;
     }
 
     FTUtils::bufferToFile(file_name, (char *)palette.data(), EIF_MULTICOLOR_PALETTE_SIZE);
 }
 
-int EifImage16bit::setBitmap(const std::vector <uint8_t> &data)
+int EifImage16bit::setBitmap(const vector <uint8_t> &data)
 {
     bitmap_data = data;
 
     return 0;
 }
 
-int EifImage32bit::openEif(const std::vector<uint8_t> &data) {
+int EifImage32bit::openEif(const vector<uint8_t> &data) {
 
     if(data.size() < sizeof(EifBaseHeader)){
-        throw std::runtime_error("EIF wrong header length");
+        throw runtime_error("EIF wrong header length");
     }
     const EifBaseHeader &header = *reinterpret_cast<const struct EifBaseHeader*>(&data[0]);
 
     /* check signature */
     for(auto i=0; i < sizeof(header.signature); i++){
         if(EIF_SIGNATURE[i] != header.signature[i]){
-            throw std::runtime_error("EIF wrong signature");
+            throw runtime_error("EIF wrong signature");
         }
     }
 
     /* check type */
     if(EIF_TYPE_SUPERCOLOR != header.type){
-        throw std::runtime_error("EIF wrong type");
+        throw runtime_error("EIF wrong type");
     }
 
     auto data_offset = sizeof(EifBaseHeader);
     if(header.length > (data.size() - data_offset)){
-        throw std::runtime_error("EIF wrong data length");
+        throw runtime_error("EIF wrong data length");
     }
 
     //get aligned width
     auto aligned4_width = header.length / header.height;
     if(aligned4_width % sizeof(uint32_t)){
-        throw std::runtime_error("EIF not aligned width");
+        throw runtime_error("EIF not aligned width");
     }
 
     if((aligned4_width / sizeof(uint32_t)) < header.width){
-        throw std::runtime_error("EIF wrong actual width");
+        throw runtime_error("EIF wrong actual width");
     }
 
     bitmap_data.clear();
     bitmap_data.reserve(header.height * header.width);
     for (auto i =data_offset; i < data.size(); i+=aligned4_width) {
 
-        bitmap_data.insert(std::end(bitmap_data),
+        bitmap_data.insert(end(bitmap_data),
                            data.begin() + i,
                            data.begin() + i + header.width * sizeof(uint32_t));
     }
@@ -439,7 +440,7 @@ int EifImage32bit::openEif(const std::vector<uint8_t> &data) {
     return 0;
 }
 
-void EifImage32bit::saveBmp(std::string file_name) {
+void EifImage32bit::saveBmp(string file_name) {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
@@ -461,7 +462,7 @@ void EifImage32bit::saveBmp(std::string file_name) {
     bmp_image.WriteToFile(file_name.c_str());
 }
 
-int EifImage32bit::openBmp(std::string file_name) {
+int EifImage32bit::openBmp(string file_name) {
 
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.c_str());
@@ -488,8 +489,8 @@ int EifImage32bit::openBmp(std::string file_name) {
     return 0;
 }
 
-void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::string& out_file_name,
-        const std::string& palette_file_name)
+void EifConverter::eifToBmpFile(const vector<uint8_t>& data, const string& out_file_name,
+        const string& palette_file_name)
 {
 
     EifImageBase* image;
@@ -499,14 +500,14 @@ void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::str
     } else if(data[7] == EIF_TYPE_MULTICOLOR) {
         image = new EifImage16bit;
         if(!palette_file_name.empty()) {
-            std::vector<uint8_t> palette;
+            vector<uint8_t> palette;
             FTUtils::fileToVector(palette_file_name, palette);
             dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
         }
     } else if(data[7] == EIF_TYPE_SUPERCOLOR){
         image = new EifImage32bit;
     } else {
-        throw std::runtime_error("Unsupported EIF format");
+        throw runtime_error("Unsupported EIF format");
     }
 
     image->openEif(data);
@@ -518,8 +519,8 @@ void EifConverter::eifToBmpFile(const std::vector<uint8_t>& data, const std::str
     delete image;
 }
 
-void EifConverter::bmpFileToEifFile(const std::string& file_name, uint8_t depth, const std::string& out_file_name,
-        const std::string& palette_file_name)
+void EifConverter::bmpFileToEifFile(const string& file_name, uint8_t depth, const string& out_file_name,
+        const string& palette_file_name)
 {
 
     EifImageBase* image;
@@ -530,7 +531,7 @@ void EifConverter::bmpFileToEifFile(const std::string& file_name, uint8_t depth,
         case 16: {
             image = new EifImage16bit;
             if(!palette_file_name.empty()) {
-                std::vector<uint8_t> palette;
+                vector<uint8_t> palette;
                 FTUtils::fileToVector(palette_file_name, palette);
                 dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
             }
@@ -540,7 +541,7 @@ void EifConverter::bmpFileToEifFile(const std::string& file_name, uint8_t depth,
             image = new EifImage32bit;
             break;
         default:
-            throw std::runtime_error("Incorrect depth value");
+            throw runtime_error("Incorrect depth value");
     }
 
     image->openBmp(file_name);
@@ -551,7 +552,7 @@ void EifConverter::bmpFileToEifFile(const std::string& file_name, uint8_t depth,
 
 int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path& out_dir) {
 
-    std::vector<fs::path> bmp_files;
+    vector<fs::path> bmp_files;
     for(auto& p: fs::recursive_directory_iterator(bmp_dir))
     {
         if(p.path().extension() == ".bmp")
@@ -560,10 +561,10 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
     int f_count = bmp_files.size();
 
     struct _img {
-        std::vector<uint8_t> bmp_data;
+        vector<uint8_t> bmp_data;
         unsigned w,h;
     };
-    std::vector<_img> img_vec(f_count);
+    vector<_img> img_vec(f_count);
 
     unsigned char pPalette[EIF_MULTICOLOR_NUM_COLORS * 4] = {};
 
@@ -601,7 +602,7 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
     exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
 
     //convert palette
-    std::vector<uint8_t> eif_palette;
+    vector<uint8_t> eif_palette;
     eif_palette.resize(EIF_MULTICOLOR_NUM_COLORS * 3);
     for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
         eif_palette[i * 3 + 0] = pPalette[i * 4 + 0];
@@ -610,14 +611,14 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
     }
 
     // foreach file create eif
-    std::vector<uint8_t> mapped_data;
+    vector<uint8_t> mapped_data;
     for(int f=0; f < f_count; ++f) {
         auto& img = img_vec[f];
         auto num_pixels = img.w * img.h;
         mapped_data.resize(num_pixels);
         exq_map_image(pExq, num_pixels, (unsigned char *)img.bmp_data.data(), mapped_data.data());
 
-        std::vector<uint8_t> bitmap_data(num_pixels*2);
+        vector<uint8_t> bitmap_data(num_pixels*2);
         for(auto i=0; i < img.h; i++){
             for(auto j=0; j < img.w; j++){
                 auto pixel_idx = i * img.w + j;
@@ -635,13 +636,13 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
     return 0;
 }
 
-int EifConverter::createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs) {
+int EifConverter::createMultipaletteEifs(const vector<EifImage16bit*>& eifs) {
 
     exq_data *pExq = exq_init();
     exq_no_transparency(pExq);
     unsigned char pPalette[EIF_MULTICOLOR_NUM_COLORS * 4] = {};
 
-    std::vector<std::vector<uint8_t>> eifs_bitmaps(eifs.size());
+    vector<vector<uint8_t>> eifs_bitmaps(eifs.size());
 
     for (int i =0; i < eifs.size(); ++i) {
         eifs[i]->getBitmap(eifs_bitmaps[i]);
@@ -652,7 +653,7 @@ int EifConverter::createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs
     exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
 
     //convert palette
-    std::vector<uint8_t> eif_palette;
+    vector<uint8_t> eif_palette;
     eif_palette.resize(EIF_MULTICOLOR_PALETTE_SIZE);
     for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
         eif_palette[i * 3 + 0] = pPalette[i * 4 + 0];
@@ -660,14 +661,14 @@ int EifConverter::createMultipaletteEifs(const std::vector<EifImage16bit*>& eifs
         eif_palette[i * 3 + 2] = pPalette[i * 4 + 2];
     }
 
-    std::vector<uint8_t> mapped_data;
+    vector<uint8_t> mapped_data;
     for (int i =0; i < eifs.size(); ++i) {
 
         auto num_pixels = eifs_bitmaps[i].size()/4;
         mapped_data.resize(num_pixels);
         exq_map_image(pExq, num_pixels, (unsigned char *)eifs_bitmaps[i].data(), mapped_data.data());
 
-        std::vector<uint8_t> bitmap_data(num_pixels * 2);
+        vector<uint8_t> bitmap_data(num_pixels * 2);
         for(int pixel_idx =0; pixel_idx < num_pixels; ++ pixel_idx) {
             bitmap_data[pixel_idx * 2] = mapped_data[pixel_idx];
             bitmap_data[pixel_idx * 2 + 1] = eifs_bitmaps[i][pixel_idx * 4 + 3];
