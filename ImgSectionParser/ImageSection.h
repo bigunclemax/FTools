@@ -98,11 +98,27 @@ private:
         std::vector<uint8_t> data;
     };
 
-    static uint32_t FindSectionData(const std::vector<uint8_t>& bin_data);
+    struct HeaderRecord {
+        uint32_t width;
+        uint32_t height;
+        uint32_t X;
+        uint32_t Y;
+        uint8_t type;
+        uint8_t Z;
+        uint8_t unk0;
+        uint8_t unk1;
+        uint8_t unk2;
+        uint8_t unk3;
+        uint8_t unk4;
+        uint8_t unk5;
+    };
+
+    void HeaderToCsv(const string& csv_file_path);
+    void HeaderFromCsv(const string& csv_file_path);
     static void GetItemData(const std::vector<uint8_t>& bin_data, const char* fileName, std::vector<uint8_t>& out);
     uint32_t m_unknownInt = 0;
 
-    std::vector<uint8_t> m_header_data;
+    std::vector<HeaderRecord> m_header_data;
     std::vector<Item> m_zip_vec;
     std::vector<Item> m_ttf_vec;
 

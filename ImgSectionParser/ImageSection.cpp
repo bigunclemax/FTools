@@ -5,11 +5,24 @@
 #include <regex>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
-#include <fstream>
 #include <utils.h>
 #include <sstream>
+#include <csv.h>
 
 #include "ImageSection.h"
+
+static const char* H_WIDTH = "Width";
+static const char* H_HEIGHT = "Height";
+static const char* H_X = "Y";
+static const char* H_Y = "X";
+static const char* H_TYPE = "Type";
+static const char* H_Z = "Z-index";
+static const char* H_U0 = "Unk0";
+static const char* H_U1 = "Unk1";
+static const char* H_U2 = "Unk2";
+static const char* H_U3 = "Unk3";
+static const char* H_U4 = "Unk4";
+static const char* H_U5 = "Unk5";
 
 using namespace rapidjson;
 
@@ -36,12 +49,13 @@ void ImageSection::GetItemData(const vector<uint8_t>& bin_data, const char* file
 
 void ImageSection::Parse(const vector<uint8_t> &bin_data) {
 
-    auto read_idx = FindSectionData(bin_data);
-
     // copy header
-    m_header_data.resize(read_idx);
-    copy(bin_data.begin(), bin_data.begin() + read_idx, m_header_data.begin());
+    auto records_count = *(uint32_t*)bin_data.data();
+    auto read_idx = sizeof(uint32_t);
+    m_header_data.resize(records_count);
+    m_header_data.assign((HeaderRecord*)&bin_data[read_idx], (HeaderRecord*)&bin_data[read_idx] + records_count);
 
+    read_idx += sizeof(HeaderRecord) * records_count;
     // parse Zip headers block
     uint32_t _zip_count = *reinterpret_cast<const uint32_t *>(&bin_data[read_idx]);
     read_idx += sizeof(uint32_t);
@@ -77,17 +91,76 @@ void ImageSection::Parse(const vector<uint8_t> &bin_data) {
         GetItemData(bin_data, ttf_header_ptr[i].fileName, item.data);
     }
 }
+void ImageSection::HeaderToCsv(const string& csv_file_path) {
+    std::ofstream export_list (csv_file_path);
+    export_list << H_WIDTH << ","
+            << H_HEIGHT << ","
+            << H_X << ","
+            << H_Y << ","
+            << H_TYPE << ","
+            << H_Z << ","
+            << H_U0 << ","
+            << H_U1 << ","
+            << H_U2 << ","
+            << H_U3 << ","
+            << H_U4 << ","
+            << H_U5 << endl;
 
-uint32_t ImageSection::FindSectionData(const vector<uint8_t> &bin_data) {
-
-    vector<uint8_t> v2 = {'~','m','e','m'};
-    auto res = search(begin(bin_data), end(bin_data), begin(v2), end(v2));
-    if(res == end(bin_data)) {
-        throw runtime_error("image or ttf resources not found");
+    for(const auto& hr : m_header_data) {
+        export_list << hr.width << ","
+                << hr.height << ","
+                << hr.X << ","
+                << hr.Y << ","
+                << (int)hr.type << ","
+                << (int)hr.Z << ","
+                << (int)hr.unk0 << ","
+                << (int)hr.unk1 << ","
+                << (int)hr.unk2 << ","
+                << (int)hr.unk3 << ","
+                << (int)hr.unk4 << ","
+                << (int)hr.unk5 << endl;
     }
-    return res - bin_data.begin() - 13; // 4b - width, 4b - height, 1b -type, 4b - total items;
+    export_list.close();
 }
 
+void ImageSection::HeaderFromCsv(const string &csv_file_path) {
+
+    m_header_data.clear();
+    m_header_data.reserve(2000);
+
+    io::CSVReader<12> in(csv_file_path);
+    in.read_header(io::ignore_extra_column,
+                   H_WIDTH ,
+                   H_HEIGHT ,
+                   H_X ,
+                   H_Y ,
+                   H_TYPE ,
+                   H_Z ,
+                   H_U0 ,
+                   H_U1 ,
+                   H_U2 ,
+                   H_U3 ,
+                   H_U4 ,
+                   H_U5 );
+
+    HeaderRecord hr = {};
+
+    while(in.read_row(hr.width,
+                hr.height ,
+                hr.X ,
+                hr.Y ,
+                hr.type ,
+                hr.Z ,
+                hr.unk0 ,
+                hr.unk1 ,
+                hr.unk2 ,
+                hr.unk3 ,
+                hr.unk4 ,
+                hr.unk5 ))
+    {
+        m_header_data.push_back(hr);
+    }
+}
 
 int ImageSection::Export(const fs::path &out_path, const string& name_prefix) {
 
@@ -101,9 +174,8 @@ int ImageSection::Export(const fs::path &out_path, const string& name_prefix) {
     fs::create_directory(out_path / "ttf");
 
     // save header
-    auto out_file_str = (name_prefix + "_header.bin");
-    FTUtils::bufferToFile((out_path / out_file_str).string(),
-                (char *) m_header_data.data(), m_header_data.size());
+    auto out_file_str = (name_prefix + "_header.csv");
+    HeaderToCsv(out_file_str);
     document.AddMember("header", Value(out_file_str.c_str(), allocator), allocator);
     document.AddMember("unknown-int", Value().SetUint64(m_unknownInt), allocator);
 
@@ -125,7 +197,6 @@ int ImageSection::Export(const fs::path &out_path, const string& name_prefix) {
                     section_obj.AddMember("width", item.width, allocator);
                     section_obj.AddMember("height", item.height, allocator);
                     section_obj.AddMember("type", Value(ToString(static_cast<image_type>(item.img_type)), allocator), allocator);
-//                  section_obj.AddMember("content", Value(_fileName, allocator), allocator); //TODO: add zip name
                 }
             }
             json_section.PushBack(section_obj, allocator);
@@ -163,7 +234,6 @@ int ImageSection::GetItemsCount(ImageSection::enResType res_type) {
 
 int ImageSection::Import(const fs::path &config_path) {
 
-//    fs::path _config_path(fs::absolute(config_path));
     fs::path config_dir = config_path.parent_path();
 
     ifstream config_file(config_path);
@@ -191,19 +261,7 @@ int ImageSection::Import(const fs::path &config_path) {
     // read header
     Value& v = document["header"];
     string header_path = config_dir.string() + "/" + v.GetString();
-    ifstream header_file(header_path, ios::binary | std::ios::ate);
-    if(header_file.fail()) {
-        throw runtime_error("Can't open header " + config_path.string());
-    }
-    streamsize header_size = header_file.tellg();
-    header_file.seekg(0, ios::beg);
-
-    m_header_data.resize(header_size);
-    if (!header_file.read((char *)m_header_data.data(), header_size)) {
-        throw runtime_error("Can't read header file " + config_path.string());
-    }
-    header_file.close();
-
+    HeaderFromCsv(header_path);
     auto GetSectionFiles = [&document, &config_dir](const char* section_name, std::vector<Item>& items_vector) {
 
         const Value& section = document[section_name];
@@ -238,13 +296,17 @@ int ImageSection::Import(const fs::path &config_path) {
 int ImageSection::SaveToVector(vector<uint8_t> &v) {
 
     //write header
-    v.resize(m_header_data.size());
-    copy(m_header_data.data(), m_header_data.data() + m_header_data.size(), v.begin());
+    uint32_t records_count = m_header_data.size();
+    auto head_in_bytes = m_header_data.size()*sizeof(HeaderRecord);
+    v.resize(head_in_bytes + sizeof(uint32_t));
+    copy((char *)&records_count,(char *)&records_count + sizeof(uint32_t), v.begin());
+    copy((uint8_t *)m_header_data.data(),(uint8_t *)m_header_data.data() + head_in_bytes,
+            v.begin() + sizeof(uint32_t));
 
     //calc initial data offset
     uint32_t zip_count = m_zip_vec.size();
     uint32_t ttf_count = m_ttf_vec.size();
-    unsigned data_offset = 0x02400000 + m_header_data.size();
+    unsigned data_offset = 0x02400000 + head_in_bytes + sizeof(uint32_t);
     data_offset += zip_count * sizeof(zip_file) + sizeof(uint32_t);
     data_offset += ttf_count * sizeof(ttf_file) + sizeof(uint32_t);
     data_offset += sizeof(uint32_t); // + magic int
