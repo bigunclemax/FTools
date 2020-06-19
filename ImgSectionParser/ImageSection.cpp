@@ -13,8 +13,8 @@
 
 static const char* H_WIDTH = "Width";
 static const char* H_HEIGHT = "Height";
-static const char* H_X = "Y";
-static const char* H_Y = "X";
+static const char* H_X = "X";
+static const char* H_Y = "Y";
 static const char* H_TYPE = "Type";
 static const char* H_Z = "Z-index";
 static const char* H_U0 = "Unk0";
