@@ -18,10 +18,10 @@ static const char* H_Y = "X";
 static const char* H_TYPE = "Type";
 static const char* H_Z = "Z-index";
 static const char* H_U0 = "Unk0";
-static const char* H_U1 = "Unk1";
-static const char* H_U2 = "Unk2";
-static const char* H_U3 = "Unk3";
-static const char* H_U4 = "Unk4";
+static const char* H_U1 = "R";
+static const char* H_U2 = "G";
+static const char* H_U3 = "B";
+static const char* H_U4 = "A";
 static const char* H_U5 = "Unk5";
 
 using namespace rapidjson;
@@ -103,8 +103,7 @@ void ImageSection::HeaderToCsv(const string& csv_file_path) {
             << H_U1 << ","
             << H_U2 << ","
             << H_U3 << ","
-            << H_U4 << ","
-            << H_U5 << endl;
+            << H_U4 << endl;
 
     for(const auto& hr : m_header_data) {
         export_list << hr.width << ","
@@ -114,11 +113,10 @@ void ImageSection::HeaderToCsv(const string& csv_file_path) {
                 << (int)hr.type << ","
                 << (int)hr.Z << ","
                 << (int)hr.unk0 << ","
-                << (int)hr.unk1 << ","
-                << (int)hr.unk2 << ","
-                << (int)hr.unk3 << ","
-                << (int)hr.unk4 << ","
-                << (int)hr.unk5 << endl;
+                << (int)hr.R << ","
+                << (int)hr.G << ","
+                << (int)hr.B << ","
+                << (int)hr.A << endl;
     }
     export_list.close();
 }
@@ -128,7 +126,7 @@ void ImageSection::HeaderFromCsv(const string &csv_file_path) {
     m_header_data.clear();
     m_header_data.reserve(2000);
 
-    io::CSVReader<12> in(csv_file_path);
+    io::CSVReader<11> in(csv_file_path);
     in.read_header(io::ignore_extra_column,
                    H_WIDTH ,
                    H_HEIGHT ,
@@ -140,8 +138,7 @@ void ImageSection::HeaderFromCsv(const string &csv_file_path) {
                    H_U1 ,
                    H_U2 ,
                    H_U3 ,
-                   H_U4 ,
-                   H_U5 );
+                   H_U4  );
 
     HeaderRecord hr = {};
 
@@ -152,11 +149,10 @@ void ImageSection::HeaderFromCsv(const string &csv_file_path) {
                 hr.type ,
                 hr.Z ,
                 hr.unk0 ,
-                hr.unk1 ,
-                hr.unk2 ,
-                hr.unk3 ,
-                hr.unk4 ,
-                hr.unk5 ))
+                hr.R ,
+                hr.G ,
+                hr.B ,
+                hr.A ))
     {
         m_header_data.push_back(hr);
     }

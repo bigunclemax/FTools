@@ -106,10 +106,10 @@ private:
         uint8_t type;
         uint8_t Z;
         uint8_t unk0;
-        uint8_t unk1;
-        uint8_t unk2;
-        uint8_t unk3;
-        uint8_t unk4;
+        uint8_t R;
+        uint8_t G;
+        uint8_t B;
+        uint8_t A;
         uint8_t unk5;
     };
 
