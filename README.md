@@ -6,7 +6,7 @@ This toolset useful for unpacking\repacking firmware part of the ford ipc which 
 - imgunpkr can be used to unpack\pack images and fonts from vbf.
 - vbfeditor can be used to unpack\pack vbf files.
 - imgparcer can be used to extract .zip archives with images and .ttf fonts from image section.
-- eifviewer can turn a .eif image into a .bmp and back.
+- eifconverter can turn a .eif image into a .bmp and back.
 
 Linux scripts from tools dir:
 - extract_images.sh
@@ -27,18 +27,18 @@ Fonts will be extracted to:
 And will be created `./dest_dir/export_list.csv` which contain info about extracted resources.
 
 ###### Modify image
-You could modify bmp images with usage [eif converter](#eifviewer)
+You could modify bmp images with usage [eif converter](#eifconverter)
 
 ###### Pack images and fonts
 `imgunpkr -p -c export_list.csv -o ./dest_dir original_images.vbf`  
 As a result `./dest_dir.patched.vbf` will be created.
 
-##### eifviewer
+##### eifconverter
 ###### Convert bmp images to eif
-`./eifviewer -u ./_logo.eif -o ./out.bmp`
+`./eifconverter -u ./_logo.eif -o ./out.bmp`
 
 ###### Convert eif images to bmp  
-`./eifviewer -p -d 16 ./edited.bmp -o ./out.eif`
+`./eifconverter -p -d 16 ./edited.bmp -o ./out.eif`
 
 EIF images has differ color depth and could be:
 - SUPERCOLOR - TrueColor(24bit) `-d 32`

@@ -21,7 +21,7 @@ function extract_eifs() {
   for eif in $eifs_dir/*.eif ; do
     if [ -f $eif ]; then
       local eif_name=$(basename $eif)
-      eifviewer -u $eif -o $bmp_dir/${eif_name}.bmp
+      eifconverter -u $eif -o $bmp_dir/${eif_name}.bmp
     fi
   done
 }

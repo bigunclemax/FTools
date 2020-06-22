@@ -9,8 +9,8 @@ EXIT /B %ERRORLEVEL%
 	echo Converting all BMP to EIF... please wait
 	echo.
 	for %%a in ("%~dp0/*.bmp") do (
-		REM eifviewer -p "%%a" -o "%%~na.eif" -d 8
-		eifviewer -p "%%a" -o "%%~na.eif" -s "%%a.pal" -d 16
+		REM eifconverter -p "%%a" -o "%%~na.eif" -d 8
+		eifconverter -p "%%a" -o "%%~na.eif" -s "%%a.pal" -d 16
 	)
 	echo Done
 	echo.
