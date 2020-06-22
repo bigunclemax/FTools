@@ -76,6 +76,7 @@ public:
     int openBmp(string file_name) override;
     int setPalette(const vector<uint8_t>& data);
     void savePalette(const string& file_name);
+    int changePalette(const vector<uint8_t> &data);
     int setBitmap(const vector<uint8_t>& mapped_data);
     void getBitmap(vector<uint8_t>& data);
 };

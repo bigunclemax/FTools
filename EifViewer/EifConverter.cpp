@@ -373,6 +373,40 @@ int EifImage16bit::setPalette(const vector<uint8_t> &data) {
     return 0;
 }
 
+int EifImage16bit::changePalette(const vector<uint8_t> &data) {
+
+    if(data.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
+        cerr << "Error: palette wrong size" << endl;
+        return -1;
+    }
+
+    palette = data;
+    vector<uint8_t> pPalette(EIF_MULTICOLOR_NUM_COLORS*4);
+    for(int i =0; i < EIF_MULTICOLOR_NUM_COLORS; ++i) {
+        pPalette[i*4+0] = data[i*3+0];
+        pPalette[i*4+1] = data[i*3+1];
+        pPalette[i*4+2] = data[i*3+2];
+        pPalette[i*4+3] = 0;
+    }
+
+    auto num_pixels = (int)(width * height);
+    vector<uint8_t> mapped_data(num_pixels);
+    vector<uint8_t> bitmap;
+    getBitmap(bitmap);
+
+    exq_data *pExq = exq_init();
+    exq_no_transparency(pExq);
+    exq_set_palette(pExq, pPalette.data(), EIF_MULTICOLOR_NUM_COLORS);
+    exq_map_image(pExq, num_pixels, (unsigned char *)bitmap.data(), mapped_data.data());
+    exq_free(pExq);
+
+    for(int i =0; i < num_pixels; ++i) {
+        bitmap_data[i * 2] = mapped_data[i];
+    }
+
+    return 0;
+}
+
 void EifImage16bit::savePalette(const string& file_name) {
 
     if(palette.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
