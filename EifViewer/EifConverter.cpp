@@ -277,7 +277,7 @@ int EifImage16bit::openBmp(string file_name) {
         pExq = exq_init();
         exq_no_transparency(pExq);
         exq_feed(pExq, (unsigned char *)pImage_data.data(), num_pixels);
-        exq_quantize_hq(pExq, EIF_MULTICOLOR_NUM_COLORS); //TODO: add param for fast mode
+        exq_quantize(pExq, EIF_MULTICOLOR_NUM_COLORS);
         exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
         exq_map_image(pExq, num_pixels, (unsigned char *)pImage_data.data(), pOut.data());
         exq_free(pExq);
@@ -598,7 +598,7 @@ int EifConverter::createMultipaletteEifs(const fs::path& bmp_dir, const fs::path
         exq_feed(pExq, (unsigned char *)pImage_data.data(), num_pixels);
     }
 
-    exq_quantize_hq(pExq, EIF_MULTICOLOR_NUM_COLORS); //TODO: add param for fast mode
+    exq_quantize(pExq, EIF_MULTICOLOR_NUM_COLORS);
     exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
 
     //convert palette
@@ -649,7 +649,7 @@ int EifConverter::createMultipaletteEifs(const vector<EifImage16bit*>& eifs) {
         exq_feed(pExq, (unsigned char *)eifs_bitmaps[i].data(), (int)eifs_bitmaps[i].size()/4);
     }
 
-    exq_quantize_hq(pExq, EIF_MULTICOLOR_NUM_COLORS); //TODO: add param for fast mode
+    exq_quantize(pExq, EIF_MULTICOLOR_NUM_COLORS);
     exq_get_palette(pExq, pPalette, EIF_MULTICOLOR_NUM_COLORS);
 
     //convert palette
