@@ -87,7 +87,8 @@ public:
     int DelItem();
     int ReplaceItem(enResType res_type, unsigned idx, const vector<uint8_t>& bin_data,
             uint32_t w=0, uint32_t h=0, uint8_t t=0);
-
+    void HeaderToCsv(const string& csv_file_path);
+    void HeaderFromCsv(const string& csv_file_path);
 private:
 
     struct Item {
@@ -113,8 +114,6 @@ private:
         uint8_t unk5;
     };
 
-    void HeaderToCsv(const string& csv_file_path);
-    void HeaderFromCsv(const string& csv_file_path);
     static void GetItemData(const std::vector<uint8_t>& bin_data, const char* fileName, std::vector<uint8_t>& out);
     uint32_t m_unknownInt = 0;
 
