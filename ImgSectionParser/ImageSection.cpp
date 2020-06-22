@@ -91,7 +91,7 @@ void ImageSection::Parse(const vector<uint8_t> &bin_data) {
         GetItemData(bin_data, ttf_header_ptr[i].fileName, item.data);
     }
 }
-void ImageSection::HeaderToCsv(const string& csv_file_path) {
+void ImageSection::HeaderToCsv(const fs::path& csv_file_path) {
     std::ofstream export_list (csv_file_path);
     export_list << H_WIDTH << ","
             << H_HEIGHT << ","
@@ -121,12 +121,12 @@ void ImageSection::HeaderToCsv(const string& csv_file_path) {
     export_list.close();
 }
 
-void ImageSection::HeaderFromCsv(const string &csv_file_path) {
+void ImageSection::HeaderFromCsv(const fs::path& csv_file_path) {
 
     m_header_data.clear();
     m_header_data.reserve(2000);
 
-    io::CSVReader<11> in(csv_file_path);
+    io::CSVReader<11> in(csv_file_path.string());
     in.read_header(io::ignore_extra_column,
                    H_WIDTH ,
                    H_HEIGHT ,

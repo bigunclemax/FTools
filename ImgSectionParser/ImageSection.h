@@ -87,8 +87,8 @@ public:
     int DelItem();
     int ReplaceItem(enResType res_type, unsigned idx, const vector<uint8_t>& bin_data,
             uint32_t w=0, uint32_t h=0, uint8_t t=0);
-    void HeaderToCsv(const string& csv_file_path);
-    void HeaderFromCsv(const string& csv_file_path);
+    void HeaderToCsv(const fs::path& csv_file_path);
+    void HeaderFromCsv(const fs::path& csv_file_path);
 private:
 
     struct Item {

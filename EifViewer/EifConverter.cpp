@@ -41,16 +41,16 @@ void EifImageBase::saveEifToVector(vector<uint8_t>& data) {
     data.insert(end(data), begin(bitmap_data), end(bitmap_data));
 }
 
-void EifImageBase::saveEif(const string& file_name) {
+void EifImageBase::saveEif(const fs::path& file_name) {
     vector<uint8_t> eif_img;
     saveEifToVector(eif_img);
     FTUtils::bufferToFile(file_name, (char *)eif_img.data(), eif_img.size());
 }
 
-int EifImage8bit::openBmp(string file_name) {
+int EifImage8bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    bmp_image.ReadFromFile(file_name.c_str());
+    bmp_image.ReadFromFile(file_name.string().c_str());
 
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
@@ -75,7 +75,7 @@ int EifImage8bit::openBmp(string file_name) {
     return 0;
 }
 
-void EifImage8bit::saveBmp(string file_name){
+void EifImage8bit::saveBmp(const fs::path& file_name){
 
     BMP bmp_image;
     bmp_image.SetSize((int)width, (int)height);
@@ -94,7 +94,7 @@ void EifImage8bit::saveBmp(string file_name){
         }
     }
 
-    bmp_image.WriteToFile(file_name.c_str());
+    bmp_image.WriteToFile(file_name.string().c_str());
 }
 
 int EifImage8bit::openEif(const vector<uint8_t>& data) {
@@ -244,10 +244,10 @@ uint8_t EifImage16bit::searchPixel(RGBApixel rgb_pixel) {
     return closest_index;
 }
 
-int EifImage16bit::openBmp(string file_name) {
+int EifImage16bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    bmp_image.ReadFromFile(file_name.c_str());
+    bmp_image.ReadFromFile(file_name.string().c_str());
 
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
@@ -316,7 +316,7 @@ int EifImage16bit::openBmp(string file_name) {
     return 0;
 }
 
-void EifImage16bit::saveBmp(string file_name) {
+void EifImage16bit::saveBmp(const fs::path& file_name) {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
@@ -336,7 +336,7 @@ void EifImage16bit::saveBmp(string file_name) {
         }
     }
 
-    bmp_image.WriteToFile(file_name.c_str());
+    bmp_image.WriteToFile(file_name.string().c_str());
 }
 
 void EifImage16bit::getBitmap(vector<uint8_t> &data) {
@@ -407,7 +407,7 @@ int EifImage16bit::changePalette(const vector<uint8_t> &data) {
     return 0;
 }
 
-void EifImage16bit::savePalette(const string& file_name) {
+void EifImage16bit::savePalette(const fs::path& file_name) {
 
     if(palette.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
         cerr << "Error: palette wrong size" << endl;
@@ -473,7 +473,7 @@ int EifImage32bit::openEif(const vector<uint8_t> &data) {
     return 0;
 }
 
-void EifImage32bit::saveBmp(string file_name) {
+void EifImage32bit::saveBmp(const fs::path& file_name) {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
@@ -492,13 +492,13 @@ void EifImage32bit::saveBmp(string file_name) {
             bmp_image.SetPixel(j, i, rgb_pixel);
         }
     }
-    bmp_image.WriteToFile(file_name.c_str());
+    bmp_image.WriteToFile(file_name.string().c_str());
 }
 
-int EifImage32bit::openBmp(string file_name) {
+int EifImage32bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    bmp_image.ReadFromFile(file_name.c_str());
+    bmp_image.ReadFromFile(file_name.string().c_str());
 
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
@@ -521,8 +521,8 @@ int EifImage32bit::openBmp(string file_name) {
     return 0;
 }
 
-void EifConverter::eifToBmpFile(const vector<uint8_t>& data, const string& out_file_name,
-        const string& palette_file_name)
+void EifConverter::eifToBmpFile(const vector<uint8_t>& data, const fs::path& out_file_name,
+        const fs::path& palette_file_name)
 {
 
     EifImageBase* image;
@@ -532,8 +532,7 @@ void EifConverter::eifToBmpFile(const vector<uint8_t>& data, const string& out_f
     } else if(data[7] == EIF_TYPE_MULTICOLOR) {
         image = new EifImage16bit;
         if(!palette_file_name.empty()) {
-            vector<uint8_t> palette;
-            FTUtils::fileToVector(palette_file_name, palette);
+            auto palette = FTUtils::fileToVector(palette_file_name);
             dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
         }
     } else if(data[7] == EIF_TYPE_SUPERCOLOR){
@@ -545,14 +544,14 @@ void EifConverter::eifToBmpFile(const vector<uint8_t>& data, const string& out_f
     image->openEif(data);
     image->saveBmp(out_file_name);
     if(data[7] == EIF_TYPE_MULTICOLOR) {
-        dynamic_cast<EifImage16bit*>(image)->savePalette(out_file_name+".pal");
+        auto pal_path(out_file_name);
+        dynamic_cast<EifImage16bit*>(image)->savePalette(pal_path.replace_extension(".pal"));
     }
 
     delete image;
 }
 
-void EifConverter::bmpFileToEifFile(const string& file_name, uint8_t depth, const string& out_file_name,
-        const string& palette_file_name)
+void EifConverter::bmpFileToEifFile(const fs::path& file_name, uint8_t depth, const fs::path& out_file_name,const fs::path& palette_file_name)
 {
 
     EifImageBase* image;
@@ -563,8 +562,7 @@ void EifConverter::bmpFileToEifFile(const string& file_name, uint8_t depth, cons
         case 16: {
             image = new EifImage16bit;
             if(!palette_file_name.empty()) {
-                vector<uint8_t> palette;
-                FTUtils::fileToVector(palette_file_name, palette);
+                auto palette = FTUtils::fileToVector(palette_file_name);
                 dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
             }
         }

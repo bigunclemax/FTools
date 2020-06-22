@@ -41,16 +41,15 @@ int main(int argc, char **argv)
             cout << "Please, specify input file" << std::endl;
             return 0;
         }
-        auto input_file_name = result["input"].as<string>();
-
-        string out_file_name;
+        fs::path input_file_name(result["input"].as<string>());
+        fs::path palette_file_name(result.count("scheme") ? result["scheme"].as<string>() : "");
+        fs::path out_file_name;
         if(result.count("output")){
             out_file_name = result["output"].as<string>();
         } else {
-            out_file_name = input_file_name + ((unpack) ? ".bmp" :".eif");
+            out_file_name = ((unpack) ? input_file_name.replace_extension(".bmp") :
+                    input_file_name.replace_extension( ".eif"));
         }
-
-        string palette_file_name = result.count("scheme") ? result["scheme"].as<string>() : "";
 
         if(bulk) {
 

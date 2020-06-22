@@ -14,11 +14,11 @@ namespace fs = std::filesystem;
 
 namespace FTUtils {
 
-    inline void bufferToFile(const std::string& file_name, const char *data_ptr, int data_len) {
+    inline void bufferToFile(const fs::path& file_name, const char *data_ptr, int data_len) {
 
         std::ofstream out_file(file_name, std::ios::out | std::ios::binary);
         if (!out_file) {
-            throw std::runtime_error("file " + file_name + " can't be created");
+            throw std::runtime_error("file " + file_name.string() + " can't be created");
         } else {
             out_file.write(data_ptr, data_len);
         }
