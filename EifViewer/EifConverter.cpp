@@ -41,7 +41,7 @@ void EifImageBase::saveEifToVector(vector<uint8_t>& data) {
     data.insert(end(data), begin(bitmap_data), end(bitmap_data));
 }
 
-void EifImageBase::saveEif(string file_name) {
+void EifImageBase::saveEif(const string& file_name) {
     vector<uint8_t> eif_img;
     saveEifToVector(eif_img);
     FTUtils::bufferToFile(file_name, (char *)eif_img.data(), eif_img.size());
@@ -52,7 +52,6 @@ int EifImage8bit::openBmp(string file_name) {
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.c_str());
 
-    auto depth = bmp_image.TellBitDepth();
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
 
@@ -467,7 +466,6 @@ int EifImage32bit::openBmp(string file_name) {
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.c_str());
 
-    auto depth = bmp_image.TellBitDepth();
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
 

@@ -47,7 +47,7 @@ public:
     virtual int getType() = 0;
     virtual int openBmp(string fileName) = 0;
     virtual void saveBmp(string fileName) = 0;
-    virtual void saveEif(string fileName);
+    virtual void saveEif(const string& fileName);
     virtual void saveEifToVector(vector<uint8_t>& data);
     virtual ~EifImageBase()= default;
 };
