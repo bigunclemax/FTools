@@ -26,7 +26,7 @@ int main(int argc, char **argv)
                 ("d,depth","Output Eif type 8/16/32", cxxopts::value<unsigned>(depth))
                 ("i,input","Input file", cxxopts::value<string>())
                 ("o,output","Output file", cxxopts::value<string>())
-                ("s,scheme","(optional) Gen palette when unpack and use palette when pack", cxxopts::value<string>())
+                ("s,scheme","(optional) Use external palette when unpack and pack", cxxopts::value<string>())
                 ("h,help","Print help");
 
         options.parse_positional({"input"});
@@ -47,13 +47,14 @@ int main(int argc, char **argv)
         if(result.count("output")){
             out_file_name = result["output"].as<string>();
         } else {
-            out_file_name = ((unpack) ? input_file_name.replace_extension(".bmp") :
-                    input_file_name.replace_extension( ".eif"));
+            out_file_name = input_file_name;
+            out_file_name = ((unpack) ? out_file_name.replace_extension(".bmp") :
+                             out_file_name.replace_extension( ".eif"));
         }
 
         if(bulk) {
 
-            EIF::EifConverter::createMultipaletteEifs(input_file_name, out_file_name);
+            EIF::EifConverter::bulkPack(input_file_name, out_file_name);
 
         } else if(unpack) {
 

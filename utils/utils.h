@@ -25,6 +25,17 @@ namespace FTUtils {
         out_file.close();
     }
 
+    inline void vectorToFile(const fs::path& file_name, const std::vector<uint8_t>& data) {
+
+        std::ofstream out_file(file_name, std::ios::out | std::ios::binary);
+        if (!out_file) {
+            throw std::runtime_error("file " + file_name.string() + " can't be created");
+        } else {
+            out_file.write((const char*)data.data(), data.size());
+        }
+        out_file.close();
+    }
+
     inline void fileToVector(const fs::path& file_path, std::vector<uint8_t>& data) {
 
         std::ifstream file(file_path, std::ios::binary | std::ios::ate);

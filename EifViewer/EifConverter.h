@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <list>
 #include <string>
 #include <iostream>
 #include <iomanip>
@@ -36,6 +37,13 @@ struct EifBaseHeader {
     uint16_t height;
 };
 
+struct BitmapData {
+    vector<uint8_t> bitmapRGBA;
+    vector<uint8_t> bitmapAlpha;
+    unsigned width;
+    unsigned height;
+};
+
 class EifImageBase {
 protected:
     unsigned width =0;
@@ -48,8 +56,10 @@ public:
     virtual int openBmp(const fs::path& fileName) = 0;
     virtual void saveBmp(const fs::path& fileName) = 0;
     virtual void saveEif(const fs::path& fileName);
-    virtual void saveEifToVector(vector<uint8_t>& data);
+    virtual vector<uint8_t> saveEifToVector();
     virtual ~EifImageBase()= default;
+    virtual unsigned getWidth() { return width; };
+    virtual unsigned getHeight() { return height; };
 };
 
 class EifImage8bit: public EifImageBase {
@@ -70,7 +80,7 @@ public:
     inline int getType() override { return type; };
     EifImage16bit() = default;
     EifImage16bit(unsigned int w, unsigned int h, const vector<uint8_t> &pal,
-                                 const vector<uint8_t> &bitmap);
+                                 const vector<uint8_t> &bitmap, const vector<uint8_t> &alpha = vector<uint8_t>());
     int openEif(const vector<uint8_t>& data) override;
     void saveBmp(const fs::path& file_name) override;
     int openBmp(const fs::path& file_name) override;
@@ -78,7 +88,7 @@ public:
     void savePalette(const fs::path& file_name);
     int changePalette(const vector<uint8_t> &data);
     int setBitmap(const vector<uint8_t>& mapped_data);
-    void getBitmap(vector<uint8_t>& data);
+    BitmapData getBitmap();
 };
 
 class EifImage32bit: public EifImageBase {
@@ -91,14 +101,14 @@ public:
 };
 
 class EifConverter {
-
 public:
+    static vector<EifImage16bit> mapMultiPalette(const vector<BitmapData>& bitmaps);
     static void eifToBmpFile(const vector<uint8_t>& data, const fs::path& out_file_name,
             const fs::path& palette_file_name = "");
     static void bmpFileToEifFile(const fs::path& file_name, uint8_t depth, const fs::path& out_file_name,
             const fs::path& palette_file_name = "");
-    static int createMultipaletteEifs(const fs::path& bmp_files, const fs::path& out_dir);
-    static int createMultipaletteEifs(const vector<EifImage16bit*>& eifs);
+    static int bulkPack(const fs::path& bmp_files, const fs::path& out_dir);
+    static BitmapData bmpToBitmap(const fs::path& file);
 };
 
 }
