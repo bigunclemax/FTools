@@ -87,7 +87,6 @@ public:
     int setPalette(const vector<uint8_t>& data);
     void savePalette(const fs::path& file_name);
     int changePalette(const vector<uint8_t> &data);
-    int setBitmap(const vector<uint8_t>& mapped_data);
     BitmapData getBitmap();
 };
 

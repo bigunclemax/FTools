@@ -259,40 +259,22 @@ uint8_t EifImage16bit::searchPixel(RGBApixel rgb_pixel) {
 
 int EifImage16bit::openBmp(const fs::path& file_name) {
 
-    BMP bmp_image;
-    bmp_image.ReadFromFile(file_name.string().c_str());
-
-    width = (unsigned)bmp_image.TellWidth();
-    height = (unsigned)bmp_image.TellHeight();
-    auto num_pixels = height * width;
-
-    bitmap_data.clear();
-    bitmap_data.resize(num_pixels * 2);
-
     if(palette.empty()) {
         //generated palette
-        vector<uint8_t> pImage_data;
-        pImage_data.reserve(num_pixels*4);
-        for(auto j =0; j < height; ++j){
-            for(auto i=0; i < width; ++i){
-                auto px = bmp_image.GetPixel(i, j);
-                pImage_data.push_back(px.Red);
-                pImage_data.push_back(px.Green);
-                pImage_data.push_back(px.Blue);
-                pImage_data.push_back(px.Alpha);
-            }
-        }
+        auto bitmap = EifConverter::bmpToBitmap(file_name.string().c_str());
+        width = bitmap.width;
+        height = bitmap.height;
+        auto num_pixels = height * width;
 
+        vector<uint8_t> mapped(num_pixels);
         vector<uint8_t> pPalette(EIF_MULTICOLOR_NUM_COLORS * 4);
-        vector<uint8_t> pOut(num_pixels);
 
-        exq_data *pExq;
-        pExq = exq_init();
+        exq_data * pExq = exq_init();
         exq_no_transparency(pExq);
-        exq_feed(pExq, (unsigned char *)pImage_data.data(), num_pixels);
+        exq_feed(pExq, (unsigned char *)bitmap.bitmapRGBA.data(), num_pixels);
         exq_quantize(pExq, EIF_MULTICOLOR_NUM_COLORS);
         exq_get_palette(pExq, pPalette.data(), EIF_MULTICOLOR_NUM_COLORS);
-        exq_map_image(pExq, num_pixels, (unsigned char *)pImage_data.data(), pOut.data());
+        exq_map_image(pExq, num_pixels, (unsigned char *)bitmap.bitmapRGBA.data(), mapped.data());
         exq_free(pExq);
 
         //convert palette
@@ -304,17 +286,24 @@ int EifImage16bit::openBmp(const fs::path& file_name) {
         }
 
         for(auto i =0; i < num_pixels; ++i){
-            bitmap_data[i*2+0] = pOut[i];
-            bitmap_data[i*2+1] = pImage_data[i*4+3];
+            bitmap_data[i*2+0] = mapped[i];
+            bitmap_data[i*2+1] = bitmap.bitmapAlpha[i];
         }
 
     } else {
         // palette from file
-        for(auto i =0; i < height; i++){
-            for(auto j=0; j < width; j++){
-                RGBApixel rgb_pixel = bmp_image.GetPixel(j,i);
-                bitmap_data[0 + i * width *2 + j*2] = searchPixel(rgb_pixel);
-                bitmap_data[1 + i * width *2 + j*2] = rgb_pixel.Alpha;
+        BMP bmp_image;
+        bmp_image.ReadFromFile(file_name.string().c_str());
+
+        width = (unsigned)bmp_image.TellWidth();
+        height = (unsigned)bmp_image.TellHeight();
+        bitmap_data.resize(height * width * 2);
+
+        for(auto j =0; j < height; j++){
+            for(auto i=0; i < width; i++){
+                RGBApixel rgb_pixel = bmp_image.GetPixel(i, j);
+                bitmap_data[0 + j * width * 2 + i * 2] = searchPixel(rgb_pixel);
+                bitmap_data[1 + j * width * 2 + i * 2] = rgb_pixel.Alpha;
             }
         }
     }
@@ -414,13 +403,6 @@ void EifImage16bit::savePalette(const fs::path& file_name) {
     }
 
     FTUtils::bufferToFile(file_name, (char *)palette.data(), EIF_MULTICOLOR_PALETTE_SIZE);
-}
-
-int EifImage16bit::setBitmap(const vector <uint8_t> &data)
-{
-    bitmap_data = data;
-
-    return 0;
 }
 
 int EifImage32bit::openEif(const vector<uint8_t> &data) {
