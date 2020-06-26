@@ -17,12 +17,12 @@ static const char* H_X = "X";
 static const char* H_Y = "Y";
 static const char* H_TYPE = "Type";
 static const char* H_Z = "Z-index";
-static const char* H_U0 = "Unk0";
+static const char* H_U0 = "Intensity";
 static const char* H_U1 = "R";
 static const char* H_U2 = "G";
 static const char* H_U3 = "B";
-static const char* H_U4 = "A";
-static const char* H_U5 = "Unk5";
+static const char* H_U4 = "Palette";
+static const char* H_U5 = "Terminator";
 
 using namespace rapidjson;
 
