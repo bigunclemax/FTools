@@ -285,7 +285,9 @@ void CompressAndReplaceEIF(ImageSection& img_sec, int idx, const vector<uint8_t>
 
     //compress
     vector<uint8_t> zip_bin;
-    compressVector(res_bin, res_name.c_str(), zip_bin);
+    if(compressVector(res_bin, res_name.c_str(), zip_bin)) {
+        throw runtime_error("Can't compress resource " + res_name);
+    }
 
     //replace
     img_sec.ReplaceItem(ImageSection::RT_ZIP, idx, zip_bin,
@@ -333,7 +335,7 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
 
         if(res_path.extension() == ".bmp") {
 
-            if(res_csv_data.type == 16) {
+            if(res_csv_data.type == 16 && res_csv_data.crc) {
 
                 auto& eif_set = eif16_map[res_csv_data.crc];
                 auto& eif_data = eif_set.eif_map[res_csv_data.idx];
@@ -350,6 +352,8 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
                     eif = new EIF::EifImage8bit();
                 } else if(res_csv_data.type == 32) {
                     eif = new EIF::EifImage32bit();
+                } else if(res_csv_data.type == 16) {
+                    eif = new EIF::EifImage16bit();
                 } else {
                     throw runtime_error("Unknown resource type " + res_name.string());
                 }
