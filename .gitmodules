@@ -15,4 +15,4 @@
 	url = https://github.com/ben-strasser/fast-cpp-csv-parser.git
 [submodule "exoquant"]
 	path = EifViewer/exoquant
-	url = https://github.com/exoticorn/exoquant.git
+	url = https://github.com/bigunclemax/exoquant.git
