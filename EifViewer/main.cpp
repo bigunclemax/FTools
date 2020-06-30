@@ -48,8 +48,10 @@ int main(int argc, char **argv)
             out_file_name = result["output"].as<string>();
         } else {
             out_file_name = input_file_name;
-            out_file_name = ((unpack) ? out_file_name.replace_extension(".bmp") :
-                             out_file_name.replace_extension( ".eif"));
+            if(fs::is_regular_file(input_file_name)) {
+                out_file_name = ((unpack) ? out_file_name.replace_extension(".bmp") :
+                                 out_file_name.replace_extension( ".eif"));
+            }
         }
 
         if(bulk) {
