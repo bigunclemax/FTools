@@ -4,7 +4,6 @@
 
 #include "EifConverter.h"
 #include <fstream>
-#include <limits>
 #include <utils.h>
 #include <exoquant.h>
 #include <algorithm>
@@ -35,13 +34,13 @@ vector<uint8_t> EifImageBase::saveEifToVector() {
     header.width = (uint16_t)width;
 
     /* set length */
-    header.length = bitmap_data.size();
+    header.length = (header.type == EIF_TYPE::EIF_TYPE_MULTICOLOR)? width * height * sizeof(uint16_t) : m_bitmap_data.size();
 
     /* set palette */
     store_palette(data);
 
     /* set pixels */
-    data.insert(end(data), begin(bitmap_data), end(bitmap_data));
+    store_bitmap(data);
 
     return data;
 }
@@ -59,8 +58,8 @@ int EifImage8bit::openBmp(const fs::path& file_name) {
     height = (unsigned)bmp_image.TellHeight();
 
     auto aligned_width = (width % 4) ? (width/4 + 1)*4 : width;
-    bitmap_data.clear();
-    bitmap_data.resize(height * aligned_width);
+    m_bitmap_data.clear();
+    m_bitmap_data.resize(height * aligned_width);
 
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < aligned_width; ++i){
@@ -71,7 +70,7 @@ int EifImage8bit::openBmp(const fs::path& file_name) {
                 RGBApixel rgb_pixel = bmp_image.GetPixel(i, j);
                 pixel = (uint8_t)((rgb_pixel.Red + rgb_pixel.Green + rgb_pixel.Blue)/3);
             }
-            bitmap_data[j * aligned_width + i] = pixel;
+            m_bitmap_data[j * aligned_width + i] = pixel;
         }
     }
 
@@ -85,7 +84,7 @@ void EifImage8bit::saveBmp(const fs::path& file_name){
 
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < width; ++i){
-            auto color = *(&bitmap_data[0] + j * width + i);
+            auto color = *(&m_bitmap_data[0] + j * width + i);
 
             RGBApixel rgb_pixel;
             rgb_pixel.Alpha = 0xFF;
@@ -134,11 +133,11 @@ int EifImage8bit::openEif(const vector<uint8_t>& data) {
         throw runtime_error("EIF wrong actual width");
     }
 
-    bitmap_data.clear();
-    bitmap_data.reserve(header.height * header.width);
+    m_bitmap_data.clear();
+    m_bitmap_data.reserve(header.height * header.width);
     for (auto i =data_offset; i < data.size(); i+=aligned4_width) {
 
-        bitmap_data.insert(end(bitmap_data),
+        m_bitmap_data.insert(end(m_bitmap_data),
                            data.begin() + i,
                            data.begin() + i + header.width);
     }
@@ -149,28 +148,33 @@ int EifImage8bit::openEif(const vector<uint8_t>& data) {
     return 0;
 }
 
-EifImage16bit::EifImage16bit(unsigned int w, unsigned int h, const vector<uint8_t> &pal,
-                             const vector<uint8_t> &bitmap, const vector<uint8_t> &alpha)
-{
-    bool no_alpha = alpha.empty();
+void EifImage16bit::store_palette(vector<uint8_t> &data) {
 
-    if(!no_alpha && alpha.size() != bitmap.size())
-        throw runtime_error("Bitmap and alpha data size mismatch");
+    if (m_palette.size() != EIF_MULTICOLOR_NUM_COLORS * 4) {
+        throw runtime_error("Palette has wrong size");
+    }
 
-    width = w;
-    height = h;
-    palette = pal;
-
-    bitmap_data.resize(bitmap.size()*2);
-    for(int i=0; i < bitmap.size(); ++i) {
-        bitmap_data[i*2] = bitmap[i];
-        bitmap_data[i*2+1] = no_alpha ? 0xFF : alpha[i];
+    for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; ++i) {
+        data.push_back(m_palette[i*4+0]);
+        data.push_back(m_palette[i*4+1]);
+        data.push_back(m_palette[i*4+2]);
     }
 }
 
-void EifImage16bit::store_palette(vector<uint8_t> &data) {
-    for(int i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i++) {
-        data.push_back(palette[i]);
+void EifImage16bit::store_bitmap(vector<uint8_t> &data) {
+
+    auto num_pixels = width * height;
+    vector<uint8_t> mapped_data(num_pixels);
+
+    exq_data *pExq = exq_init();
+    exq_no_transparency(pExq);
+    exq_set_palette(pExq, m_palette.data(), EIF_MULTICOLOR_NUM_COLORS);
+    exq_map_image(pExq, num_pixels, (unsigned char *)m_bitmap_data.data(), mapped_data.data());
+    exq_free(pExq);
+
+    for(int i=0; i < num_pixels; ++i) {
+        data.push_back(mapped_data[i]);
+        data.push_back(m_alpha[i]);
     }
 }
 
@@ -199,29 +203,30 @@ int EifImage16bit::openEif(const vector<uint8_t> &data) {
     }
 
     //get aligned width
-    auto aligned16_width = header.length / header.height;
-    if(aligned16_width % sizeof(uint16_t)){
+    if((header.length / header.height) % sizeof(uint16_t)){
         throw runtime_error("EIF not aligned width");
     }
 
-    if((aligned16_width / sizeof(uint16_t)) < header.width){
-        throw runtime_error("EIF wrong actual width");
+    if(m_palette.empty()) {
+        m_palette.resize(EIF_MULTICOLOR_NUM_COLORS * 4);
+        for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; ++i) {
+            m_palette[i*4+0] = data[sizeof(EifBaseHeader)+i*3+0];
+            m_palette[i*4+1] = data[sizeof(EifBaseHeader)+i*3+1];
+            m_palette[i*4+2] = data[sizeof(EifBaseHeader)+i*3+2];
+            m_palette[i*4+3] = 0;
+        }
     }
 
-    bitmap_data.clear();
-    bitmap_data.reserve(header.height * header.width);
-    for (auto i =data_offset; i < data.size(); i+=aligned16_width) {
-        bitmap_data.insert(end(bitmap_data),
-                           data.begin() + i,
-                           data.begin() + i + header.width * sizeof(uint16_t));
-    }
+    //RGBA
+    m_bitmap_data.resize(header.height * header.width * 4);
+    m_alpha.resize(header.height * header.width);
 
-    if(palette.empty()) {
-        palette.resize(EIF_MULTICOLOR_PALETTE_SIZE);
-        copy(
-                data.begin() + sizeof(EifBaseHeader),
-                data.begin() + sizeof(EifBaseHeader) + EIF_MULTICOLOR_PALETTE_SIZE,
-                palette.begin());
+    for (auto i = 0; i < (data.size() - data_offset)/2; ++i) {
+        m_bitmap_data[i*4+0] = m_palette[data[data_offset + i*2]*4 + 0];
+        m_bitmap_data[i*4+1] = m_palette[data[data_offset + i*2]*4 + 1];
+        m_bitmap_data[i*4+2] = m_palette[data[data_offset + i*2]*4 + 2];
+        m_bitmap_data[i*4+3] = 0;
+        m_alpha[i] = data[data_offset + i*2 + 1];
     }
 
     width = header.width;
@@ -230,82 +235,36 @@ int EifImage16bit::openEif(const vector<uint8_t> &data) {
     return 0;
 }
 
-uint8_t EifImage16bit::searchPixel(RGBApixel rgb_pixel) {
+int EifImage16bit::openBmp(const fs::path& file_name) {
 
-    double color_distance = numeric_limits<double>::max();
-    uint8_t closest_index =0;
+    BMP bmp_image;
+    bmp_image.ReadFromFile(file_name.string().c_str());
 
-    for(auto i=0; i < EIF_MULTICOLOR_PALETTE_SIZE; i+=3) {
-        int R = palette[i];
-        int G = palette[i+1];
-        int B = palette[i+2];
+    width = (unsigned)bmp_image.TellWidth();
+    height = (unsigned)bmp_image.TellHeight();
+    m_bitmap_data.resize(height * width * 4);
+    m_alpha.resize(width * height);
 
-        double color_distance_new = sqrt(
-                pow((rgb_pixel.Blue - B),2) +
-                pow((rgb_pixel.Red - R),2) +
-                pow((rgb_pixel.Green - G),2));
-
-        if(color_distance_new < color_distance) {
-            color_distance = color_distance_new;
-            closest_index = (uint8_t)(i / 3);
-            if(color_distance == 0) {
-                break;
-            }
+    for(auto j =0; j < height; j++){
+        for(auto i=0; i < width; i++){
+            RGBApixel rgb_pixel = bmp_image.GetPixel(i, j);
+            m_alpha[width*j+i] = rgb_pixel.Alpha;
+            m_bitmap_data[(width*j+i)*4+0] = rgb_pixel.Red;
+            m_bitmap_data[(width*j+i)*4+1] = rgb_pixel.Green;
+            m_bitmap_data[(width*j+i)*4+2] = rgb_pixel.Blue;
         }
     }
 
-    return closest_index;
-}
+    if(m_palette.empty()) { //TODO: don't need to generate a palette at this step
 
-int EifImage16bit::openBmp(const fs::path& file_name) {
-
-    if(palette.empty()) {
         //generated palette
-        auto bitmap = EifConverter::bmpToBitmap(file_name.string().c_str());
-        width = bitmap.width;
-        height = bitmap.height;
-        auto num_pixels = height * width;
-
-        vector<uint8_t> mapped(num_pixels);
-        vector<uint8_t> pPalette(EIF_MULTICOLOR_NUM_COLORS * 4);
-
-        exq_data * pExq = exq_init();
+        exq_data *pExq = exq_init();
         exq_no_transparency(pExq);
-        exq_feed(pExq, (unsigned char *)bitmap.bitmapRGBA.data(), num_pixels);
+        exq_feed(pExq, (unsigned char *) m_bitmap_data.data(), (int)(height * width));
         exq_quantize(pExq, EIF_MULTICOLOR_NUM_COLORS);
-        exq_get_palette(pExq, pPalette.data(), EIF_MULTICOLOR_NUM_COLORS);
-        exq_map_image(pExq, num_pixels, (unsigned char *)bitmap.bitmapRGBA.data(), mapped.data());
+        m_palette.resize(EIF_MULTICOLOR_NUM_COLORS * 4);
+        exq_get_palette(pExq, m_palette.data(), EIF_MULTICOLOR_NUM_COLORS);
         exq_free(pExq);
-
-        //convert palette
-        palette.resize(EIF_MULTICOLOR_NUM_COLORS * 3);
-        for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
-            palette[i*3+0] = pPalette[i*4+0];
-            palette[i*3+1] = pPalette[i*4+1];
-            palette[i*3+2] = pPalette[i*4+2];
-        }
-
-        for(auto i =0; i < num_pixels; ++i){
-            bitmap_data[i*2+0] = mapped[i];
-            bitmap_data[i*2+1] = bitmap.bitmapAlpha[i];
-        }
-
-    } else {
-        // palette from file
-        BMP bmp_image;
-        bmp_image.ReadFromFile(file_name.string().c_str());
-
-        width = (unsigned)bmp_image.TellWidth();
-        height = (unsigned)bmp_image.TellHeight();
-        bitmap_data.resize(height * width * 2);
-
-        for(auto j =0; j < height; j++){
-            for(auto i=0; i < width; i++){
-                RGBApixel rgb_pixel = bmp_image.GetPixel(i, j);
-                bitmap_data[0 + j * width * 2 + i * 2] = searchPixel(rgb_pixel);
-                bitmap_data[1 + j * width * 2 + i * 2] = rgb_pixel.Alpha;
-            }
-        }
     }
 
     return 0;
@@ -320,12 +279,10 @@ void EifImage16bit::saveBmp(const fs::path& file_name) {
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < width; ++i){
             RGBApixel rgb_pixel;
-            auto color_idx = *(&bitmap_data[0] + j * width * 2 + i * 2);
-            rgb_pixel.Alpha = *(&bitmap_data[0] + 1 + j * width * 2 + i * 2);
-
-            rgb_pixel.Red = palette[color_idx*3];
-            rgb_pixel.Green = palette[color_idx*3+1];
-            rgb_pixel.Blue = palette[color_idx*3+2];
+            rgb_pixel.Alpha = m_alpha[width*j+i];
+            rgb_pixel.Red   = m_bitmap_data[(width*j+i)*4+0];
+            rgb_pixel.Green = m_bitmap_data[(width*j+i)*4+1];
+            rgb_pixel.Blue  = m_bitmap_data[(width*j+i)*4+2];
 
             bmp_image.SetPixel(i, j, rgb_pixel);
         }
@@ -334,75 +291,26 @@ void EifImage16bit::saveBmp(const fs::path& file_name) {
     bmp_image.WriteToFile(file_name.string().c_str());
 }
 
-BitmapData EifImage16bit::getBitmap() {
-
-    auto num_pixels = height * width;
-    vector<uint8_t> data(num_pixels * 4);
-    vector<uint8_t> alpha(num_pixels);
-    for(auto i =0; i < num_pixels; ++i){
-        alpha[i] = bitmap_data[i * 2 + 1];
-        auto color_idx = bitmap_data[i * 2];
-        data[i * 4 + 0] = palette[color_idx * 3 + 0];
-        data[i * 4 + 1] = palette[color_idx * 3 + 1];
-        data[i * 4 + 2] = palette[color_idx * 3 + 2];
-        data[i * 4 + 3] = 0;
-    }
-    return {data, alpha, width, height};
-}
-
 int EifImage16bit::setPalette(const vector<uint8_t> &data) {
 
-    if(data.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
+    if(data.size() != EIF_MULTICOLOR_NUM_COLORS*4) {
         cerr << "Error: palette wrong size" << endl;
         return -1;
     }
 
-    palette = data;
-
-    return 0;
-}
-
-int EifImage16bit::changePalette(const vector<uint8_t> &data) {
-
-    if(data.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
-        cerr << "Error: palette wrong size" << endl;
-        return -1;
-    }
-
-    palette = data;
-    vector<uint8_t> pPalette(EIF_MULTICOLOR_NUM_COLORS*4);
-    for(int i =0; i < EIF_MULTICOLOR_NUM_COLORS; ++i) {
-        pPalette[i*4+0] = data[i*3+0];
-        pPalette[i*4+1] = data[i*3+1];
-        pPalette[i*4+2] = data[i*3+2];
-        pPalette[i*4+3] = 0;
-    }
-
-    auto num_pixels = (int)(width * height);
-    vector<uint8_t> mapped_data(num_pixels);
-    auto bitmap = getBitmap();
-
-    exq_data *pExq = exq_init();
-    exq_no_transparency(pExq);
-    exq_set_palette(pExq, pPalette.data(), EIF_MULTICOLOR_NUM_COLORS);
-    exq_map_image(pExq, num_pixels, (unsigned char *)bitmap.bitmapRGBA.data(), mapped_data.data());
-    exq_free(pExq);
-
-    for(int i =0; i < num_pixels; ++i) {
-        bitmap_data[i * 2] = mapped_data[i];
-    }
+    m_palette = data;
 
     return 0;
 }
 
 void EifImage16bit::savePalette(const fs::path& file_name) {
 
-    if(palette.size() != EIF_MULTICOLOR_PALETTE_SIZE) {
+    if(m_palette.empty()) {
         cerr << "Error: palette wrong size" << endl;
         return;
     }
 
-    FTUtils::bufferToFile(file_name, (char *)palette.data(), EIF_MULTICOLOR_PALETTE_SIZE);
+    FTUtils::vectorToFile(file_name, m_palette);
 }
 
 int EifImage32bit::openEif(const vector<uint8_t> &data) {
@@ -439,11 +347,11 @@ int EifImage32bit::openEif(const vector<uint8_t> &data) {
         throw runtime_error("EIF wrong actual width");
     }
 
-    bitmap_data.clear();
-    bitmap_data.reserve(header.height * header.width);
+    m_bitmap_data.clear();
+    m_bitmap_data.reserve(header.height * header.width);
     for (auto i =data_offset; i < data.size(); i+=aligned4_width) {
 
-        bitmap_data.insert(end(bitmap_data),
+        m_bitmap_data.insert(end(m_bitmap_data),
                            data.begin() + i,
                            data.begin() + i + header.width * sizeof(uint32_t));
     }
@@ -465,10 +373,10 @@ void EifImage32bit::saveBmp(const fs::path& file_name) {
 
             RGBApixel rgb_pixel;
 
-            rgb_pixel.Alpha = *(&bitmap_data[0] + 3 + j * width * 4 + i * 4);
-            rgb_pixel.Red   = *(&bitmap_data[0] + 2 + j * width * 4 + i * 4);
-            rgb_pixel.Green = *(&bitmap_data[0] + 1 + j * width * 4 + i * 4);
-            rgb_pixel.Blue  = *(&bitmap_data[0] + 0 + j * width * 4 + i * 4);
+            rgb_pixel.Alpha = *(&m_bitmap_data[0] + 3 + j * width * 4 + i * 4);
+            rgb_pixel.Red   = *(&m_bitmap_data[0] + 2 + j * width * 4 + i * 4);
+            rgb_pixel.Green = *(&m_bitmap_data[0] + 1 + j * width * 4 + i * 4);
+            rgb_pixel.Blue  = *(&m_bitmap_data[0] + 0 + j * width * 4 + i * 4);
 
             bmp_image.SetPixel(i, j, rgb_pixel);
         }
@@ -484,18 +392,18 @@ int EifImage32bit::openBmp(const fs::path& file_name) {
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
 
-    bitmap_data.clear();
-    bitmap_data.resize(height * width * 4);
+    m_bitmap_data.clear();
+    m_bitmap_data.resize(height * width * 4);
 
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < width; ++i){
 
             RGBApixel rgb_pixel = bmp_image.GetPixel(i, j);
 
-            bitmap_data[0 + 3 + j * width * 4 + i * 4] = rgb_pixel.Alpha;
-            bitmap_data[0 + 2 + j * width * 4 + i * 4] = rgb_pixel.Red;
-            bitmap_data[0 + 1 + j * width * 4 + i * 4] = rgb_pixel.Green;
-            bitmap_data[0 + 0 + j * width * 4 + i * 4] = rgb_pixel.Blue;
+            m_bitmap_data[0 + 3 + j * width * 4 + i * 4] = rgb_pixel.Alpha;
+            m_bitmap_data[0 + 2 + j * width * 4 + i * 4] = rgb_pixel.Red;
+            m_bitmap_data[0 + 1 + j * width * 4 + i * 4] = rgb_pixel.Green;
+            m_bitmap_data[0 + 0 + j * width * 4 + i * 4] = rgb_pixel.Blue;
         }
     }
 
@@ -561,40 +469,24 @@ void EifConverter::bmpFileToEifFile(const fs::path& file_name, uint8_t depth, co
     delete image;
 }
 
-vector<EifImage16bit> EifConverter::mapMultiPalette(const vector<BitmapData>& bitmaps)
+void EifConverter::mapMultiPalette(vector<EifImage16bit>& eifs)
 {
-    vector<EifImage16bit> eifs;
-
     exq_data *pExq = exq_init();
     exq_no_transparency(pExq);
 
-    for (const auto& bitmap :bitmaps) {
-        exq_feed(pExq, (unsigned char *)bitmap.bitmapRGBA.data(), (int)bitmap.bitmapRGBA.size()/4);
+    for (const auto& eif :eifs) {
+        exq_feed(pExq, (unsigned char *)eif.getBitmap().data(), (int)eif.getBitmap().size()/4);
     }
 
     exq_quantize(pExq, EIF_MULTICOLOR_NUM_COLORS);
     vector<uint8_t> paletteRGBA(EIF_MULTICOLOR_NUM_COLORS*4);
     exq_get_palette(pExq, paletteRGBA.data(), EIF_MULTICOLOR_NUM_COLORS);
 
-    //convert palette
-    vector<uint8_t> eif_palette(EIF_MULTICOLOR_PALETTE_SIZE);
-    for(int i=0; i < EIF_MULTICOLOR_NUM_COLORS; i++) {
-        eif_palette[i * 3 + 0] = paletteRGBA[i * 4 + 0];
-        eif_palette[i * 3 + 1] = paletteRGBA[i * 4 + 1];
-        eif_palette[i * 3 + 2] = paletteRGBA[i * 4 + 2];
-    }
-
-    vector<uint8_t> mapped_data;
-    for (const auto& bitmap :bitmaps) {
-        mapped_data.resize(bitmap.bitmapRGBA.size()/4);
-        exq_map_image(pExq,(int)bitmap.bitmapRGBA.size()/4, (unsigned char *)bitmap.bitmapRGBA.data(),
-                mapped_data.data());
-        eifs.emplace_back(bitmap.width, bitmap.height, eif_palette, mapped_data, bitmap.bitmapAlpha);
+    for (auto& eif :eifs) {
+        eif.setPalette(paletteRGBA);
     }
 
     exq_free(pExq);
-
-    return eifs;
 }
 
 int EifConverter::bulkPack(const fs::path& bmp_dir, const fs::path& out_dir) {
@@ -607,41 +499,17 @@ int EifConverter::bulkPack(const fs::path& bmp_dir, const fs::path& out_dir) {
     }
     int f_count = bmp_files.size();
 
-    vector<BitmapData> bitmaps(f_count);
+    vector<EifImage16bit> eifs(f_count);
 
     for(auto f=0; f < f_count; ++f) {
-        bitmaps[f] = bmpToBitmap(bmp_files[f].string().c_str());
+        eifs[f].openBmp(bmp_files[f]);
     }
 
-    auto eifs = mapMultiPalette(bitmaps);
+    mapMultiPalette(eifs);
+
     for(auto f=0; f < f_count; ++f) {
         eifs[f].saveEif((out_dir / (bmp_files[f].stem().string() + ".eif")).string());
     }
 
     return 0;
-}
-
-BitmapData EifConverter::bmpToBitmap(const fs::path& file) {
-
-    BitmapData data;
-
-    BMP bmp_image;
-    bmp_image.ReadFromFile(file.string().c_str());
-    data.width = (unsigned)bmp_image.TellWidth();
-    data.height = (unsigned)bmp_image.TellHeight();
-    auto num_pixels = data.width * data.height;
-    data.bitmapRGBA.reserve(num_pixels*4);
-    data.bitmapAlpha.reserve(num_pixels);
-    for(auto j =0; j < data.height; ++j){
-        for(auto i=0; i < data.width; ++i){
-            auto px = bmp_image.GetPixel(i, j);
-            data.bitmapRGBA.push_back(px.Red);
-            data.bitmapRGBA.push_back(px.Green);
-            data.bitmapRGBA.push_back(px.Blue);
-            data.bitmapRGBA.push_back(0);
-            data.bitmapAlpha.push_back(px.Alpha);
-        }
-    }
-
-    return data;
 }
