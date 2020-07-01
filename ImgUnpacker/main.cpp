@@ -269,6 +269,15 @@ csv_row GetResCsvData(const std::vector<csv_row>& csv, const std::string& res_na
     return csv_data;
 }
 
+std::string GetNameFromIdx(const std::vector<csv_row>& csv, int idx) {
+
+    for (auto& csv_row :csv) {
+        if(csv_row.idx == idx && csv_row.type)
+            return csv_row.name;
+    }
+    throw runtime_error("Can't get resource name with idx: " + to_string(idx));
+}
+
 vector<uint32_t> GetResWithSamePalette(const std::vector<csv_row>& csv, const uint32_t crc) {
     vector<uint32_t> indexes;
     for (auto& csv_row :csv) {
@@ -299,13 +308,9 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
 
     fs::path custom_dir = config_path.parent_path()/CUSTOM_DIR;
 
-    struct EifData {
-        string eif_name;
-        int bitmap_idx;
-    };
     struct EifsSet {
-        std::map<int, EifData> eif_map;
-        vector<EIF::BitmapData> bitmaps;
+        vector<unsigned> eif_idx;
+        vector<EIF::EifImage16bit> eifs;
     };
     std::map <int, EifsSet> eif16_map;
 
@@ -337,11 +342,10 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
 
             if(res_csv_data.type == 16 && res_csv_data.crc) {
 
-                auto& eif_set = eif16_map[res_csv_data.crc];
-                auto& eif_data = eif_set.eif_map[res_csv_data.idx];
-                eif_set.bitmaps.emplace_back(EIF::EifConverter::bmpToBitmap(res_path.string()));
-                eif_data.eif_name = res_path.stem().string() + ".eif";
-                eif_data.bitmap_idx = (int)eif_set.bitmaps.size() - 1;
+                auto& eifs_set = eif16_map[res_csv_data.crc];
+                eifs_set.eif_idx.emplace_back(res_csv_data.idx);
+                auto& eif = eifs_set.eifs.emplace_back();
+                eif.openBmp(res_path.string());
 
             } else {
 
@@ -373,24 +377,25 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
     for(auto& it : eif16_map) {
 
         auto& eif_set = it.second;
+        auto& eif_idx = eif_set.eif_idx;
 
         auto indexes = GetResWithSamePalette(csv, it.first);
         for (auto& idx : indexes) {
-            if (it.second.eif_map.find(idx) == it.second.eif_map.end()) {
-                auto eif_bin = GetEIFfromImgSection(img_sec, idx, &eif_set.eif_map[idx].eif_name);
-                EIF::EifImage16bit eif;
+            auto itt = find(eif_idx.begin(), eif_idx.end(), idx);
+            if (itt == eif_idx.end()) {
+                auto eif_bin = GetEIFfromImgSection(img_sec, idx);
+                auto& eif = eif_set.eifs.emplace_back();
                 eif.openEif(eif_bin);
-                eif_set.bitmaps.push_back(eif.getBitmap());
-                eif_set.eif_map[idx].bitmap_idx = (int)eif_set.bitmaps.size() -1;
+                eif_idx.emplace_back(idx);
             }
         }
 
-        auto eifs = EIF::EifConverter::mapMultiPalette(eif_set.bitmaps);
+        EIF::EifConverter::mapMultiPalette(eif_set.eifs);
 
         //pack
-        for(auto& eif_data : eif_set.eif_map) {
-            auto res_bin = eifs[eif_data.second.bitmap_idx].saveEifToVector();
-            CompressAndReplaceEIF(img_sec, eif_data.first, res_bin, eif_data.second.eif_name);
+        for(int i =0; i < eif_idx.size(); ++i) {
+            auto res_bin = eif_set.eifs[i].saveEifToVector();
+            CompressAndReplaceEIF(img_sec, eif_idx[i], res_bin, GetNameFromIdx(csv, eif_idx[i]));
         }
     }
 
