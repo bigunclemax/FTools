@@ -9,9 +9,9 @@ This toolset useful for unpacking\repacking firmware part of the ford ipc which 
 - **eifconverter** can turn a .eif image into a .bmp and back.
 
 #### How to
-##### imgunpkr
-###### Extract images and fonts
-`imgunpkr -u -o ./dest_dir original.vbf`
+#### imgunpkr
+##### Extract images and fonts
+`imgunpkr -u -o ./dest_dir original.vbf` 
 Images will be extracted to:
 - `./dest_dir/eif` - EIF images resources represent in internal IPC format.   
 - `./dest_dir/bmp` - Converted EIFs to bmp.  
@@ -25,20 +25,22 @@ Info files:
 
 And will be created `./dest_dir/custom` folder.  
 
-###### Modify resources
+##### Modify resources
 To change images or fonts, place the modified .bmp or .ttf to a `./dest_dir/custom` folder.  
 **Files must have the same names as the extracted resources.**
 
-###### Pack images and fonts
+##### Pack images and fonts
 `imgunpkr -p -c export_list.csv -v original.vbf -o ./dest_dir`
   
 As a result `./dest_dir.patched.vbf` will be created.
 
-##### eifconverter
-###### Convert bmp images to eif
-`./eifconverter -u ./_logo.eif -o ./out.bmp`
+---
 
-###### Convert eif images to bmp  
+#### eifconverter
+##### Convert eif images to bmp  
+`./eifconverter -u ./logo.eif -o ./out.bmp`
+
+##### Convert bmp images to eif  
 `./eifconverter -p -d 16 ./edited.bmp -o ./out.eif`
 
 EIF images has differ color depth and could be:
@@ -46,9 +48,11 @@ EIF images has differ color depth and could be:
 - MULTICOLOR - 256 color with palette `-d 16`
 - MONOCOLOR - 8bit color `-d 8`
 
-##### vbfeditor
-###### Unpack vbf (extract binary sections)
+---
+
+#### vbfeditor
+##### Unpack vbf (extract binary sections)
 `vbfeditor -u path_to.vbf -o dir/to/extract`
 
-###### Pack vbf  
+##### Pack vbf  
 `vbfeditor -p vbf_conifg -o out/dir`
