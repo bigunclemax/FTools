@@ -1,16 +1,42 @@
 #!/usr/bin/env bash
 export PATH=$PATH:../../../bin
 
-pref="../../../bin/eif/"
+pref="../../../bin"
 
 function check() {
   L=$1
   D=$2
   while read eif; do
-    eifconverter -U "${pref}${eif}.eif"
-    eifconverter -P "${pref}${eif}.bmp" -o "${pref}_${eif}.eif" -d "$D" -s "${pref}${eif}.pal"
-    diff "${pref}${eif}.eif" "${pref}_${eif}.eif"
+    eifconverter -U "${pref}/eif/${eif}.eif"
+    eifconverter -P "${pref}/eif/${eif}.bmp" -o "${pref}/eif/_${eif}.eif" -d "$D" -s "${pref}/eif/${eif}.pal"
+    diff "${pref}/eif/${eif}.eif" "${pref}/eif/_${eif}.eif"
   done < "$L"
+}
+
+function check_bulk() {
+  test_dir="./bulk"
+  mkdir -p "${test_dir}"
+  
+  while read line; do
+    eif=$(echo ${line} | cut -f1 -d';')
+    cp "${pref}/bmp/${eif}.bmp" "${test_dir}/"    
+  done < "16bppBulkList.txt"
+
+  eifconverter -B "${test_dir}" -o "${test_dir}"
+
+  while read line; do
+
+    eif=$(echo "${line}" | cut -f1 -d';')
+    crc=$(echo "${line}" | cut -f2 -d';')
+
+    crc_new=$(cksum "${test_dir}/${eif}.eif" | cut -f1 -d' ')
+    if [ "$crc_new" != "$crc" ]; then
+      echo "CRC missmatch ${eif}"
+    fi
+      
+  done < "16bppBulkList.txt"
+
+  rm -rf "${test_dir}"
 }
 
 #test 8bpp
@@ -29,4 +55,5 @@ echo "Test 16bpp w palette finished"
 #TODO:
 
 #test 16bpp in bulk mode
-#TODO:
+check_bulk
+echo "Test 16bpp bulk mode finished"
