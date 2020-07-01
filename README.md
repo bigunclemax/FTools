@@ -35,7 +35,7 @@ To change images or fonts, place the modified .bmp or .ttf to a `./dest_dir/cust
 ##### Pack images and fonts
 `imgunpkr -p -c export_list.csv -v original.vbf -o ./dest_dir`
   
-As a result `./dest_dir.patched.vbf` will be created.
+As a result `./dest_dir/patched.vbf` will be created.
 
 ---
 
