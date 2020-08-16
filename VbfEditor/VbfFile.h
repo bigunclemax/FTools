@@ -30,14 +30,24 @@ class VbfFile {
 
     uint32_t calcCRC32();
 public:
+
+    struct SectionInfo {
+        uint32_t start_addr;
+        uint32_t length;
+    };
+
     [[nodiscard]] bool IsOpen() const { return m_is_open;};
     int OpenFile (const std::string& file_path);
     int SaveToFile (std::string file_path);
     int Export(const std::string& out_dir);
     int Import(const std::string& conf_file_path);
 
+    int GetSectionInfo(uint8_t section_idx, SectionInfo &info);
     int GetSectionRaw(uint8_t section_idx, std::vector<uint8_t>& section_data);
     int ReplaceSectionRaw(uint8_t section_idx,const std::vector<uint8_t>& section_data);
+
+    inline int SectionsCount() { return m_bin_sections.size();};
+    inline int HeaderSz() { return m_ascii_header.length();};
 };
 
 

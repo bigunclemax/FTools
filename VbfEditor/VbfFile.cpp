@@ -24,7 +24,7 @@ int VbfFile::OpenFile(const string& file_path) {
 
     ifstream vbf_file(file_path, ios::binary | ios::ate);
     if(vbf_file.fail()) {
-        cout << "Open VBF file error" << endl;
+        cerr << "Open VBF file error" << endl;
         return -1;
     }
     ifstream::pos_type pos = vbf_file.tellg();
@@ -33,7 +33,7 @@ int VbfFile::OpenFile(const string& file_path) {
     vbf_file.seekg(0, ios::beg);
     vbf_file.read(reinterpret_cast<char *>(&file_buff[0]), file_buff.size());
     if (!vbf_file) {
-        cout << "Read VBF file error, only " << vbf_file.gcount() << " could be read" << endl;
+        cerr << "Read VBF file error, only " << vbf_file.gcount() << " bytes could be read" << endl;
         vbf_file.close();
         return -1;
     }
@@ -41,8 +41,6 @@ int VbfFile::OpenFile(const string& file_path) {
 
     m_file_name = fs::path(file_path).filename().string();
     m_file_length = file_buff.size();
-
-    cout << "Parse VBF file " << m_file_name << " Size: " << m_file_length << " bytes" << endl;
 
     //start read ascii header and search first '{'
     auto opened_brackets = 0;
@@ -63,7 +61,7 @@ int VbfFile::OpenFile(const string& file_path) {
     smatch m;
     regex_search(m_ascii_header, m, regex("\\bfile_checksum.*=.*0x(.*);"));
     if (m.size() != 2) {
-        cout << "VBF ascii header not contain CRC32 checksum" << endl;
+        cerr << "VBF ascii header not contain CRC32 checksum" << endl;
         return -1;
     }
     m_CRC32 = stoul(m[1], nullptr, 16);
@@ -85,16 +83,15 @@ int VbfFile::OpenFile(const string& file_path) {
 
     auto crc32 = CRC::Calculate(&file_buff[data_section_offset], m_content_size, CRC::CRC_32());
     if (m_CRC32 != crc32) {
-        cout << "VBF binary data wrong checksum " << endl;
+        cerr << "VBF binary data wrong checksum" << endl;
         return -1;
     }
-
-    cout << "VBF data CRC - [correct]" << endl << endl;
 
     //start read binary sections
     auto i = data_section_offset;
     while (i < file_buff.size()) {
 
+        auto section_offset = i;
         auto *new_section = new VbfBinarySection();
         new_section->start_addr = ntohl(*reinterpret_cast<uint32_t *>(&file_buff[i]));
         i += sizeof(uint32_t);
@@ -110,10 +107,9 @@ int VbfFile::OpenFile(const string& file_path) {
 
         auto crc = CRC::Calculate(&new_section->data[0], new_section->length, CRC::CRC_16_CCITTFALSE());
 
-        cout << std::hex << "### Got section ###" << endl
-             << "Section start addr: 0x" << new_section->start_addr << endl
-             << "Length: 0x" << new_section->length << endl
-             << "CRC: 0x" << crc << ((new_section->crc16 == crc) ? " [correct]" : " [ERROR]") << endl << endl;
+        if (new_section->crc16 != crc) {
+            cout << "Warn. VBF section at 0x" << std::hex << section_offset <<" CRC16 mismatch" << endl;
+        }
 
         m_bin_sections.push_back(new_section);
     }
@@ -131,7 +127,7 @@ int VbfFile::Export(const string& out_dir) {
     auto SaveToFile = [](const string& file_name, char *data_ptr, int data_len) {
         ofstream out_file(file_name, ios::out | ios::binary);
         if (!out_file) {
-            cout << "file: " << file_name << " can't be created" << endl;
+            cerr << "File " << file_name << " can't be created" << endl;
         } else {
             out_file.write(data_ptr, data_len);
         }
@@ -291,7 +287,7 @@ int VbfFile::SaveToFile(std::string file_path) {
     smatch m;
     regex_search(m_ascii_header, m, regex("\\bfile_checksum.*=.*0x(.*);"));
     if (m.size() != 2) {
-        cout << "VBF ascii header not contain CRC32 checksum" << endl;
+        cerr << "VBF ascii header not contain CRC32 checksum" << endl;
         return -1;
     }
     search_and_replace(m_ascii_header, m[1], str_buff.str());
@@ -353,6 +349,20 @@ int VbfFile::ReplaceSectionRaw(uint8_t section_idx, const vector<uint8_t> &secti
     (*sections_it)->data = section_data;
     (*sections_it)->length = section_data.size();
     (*sections_it)->crc16 = CRC::Calculate(section_data.data(), section_data.size(), CRC::CRC_16_CCITTFALSE());
+
+    return 0;
+}
+
+int VbfFile::GetSectionInfo(uint8_t section_idx, VbfFile::SectionInfo &info) {
+
+    if(section_idx >= m_bin_sections.size()) {
+        return -1;
+    }
+
+    auto sections_it = m_bin_sections.begin();
+    std::advance(sections_it, section_idx);
+    info.start_addr = (*sections_it)->start_addr;
+    info.length = (*sections_it)->length;
 
     return 0;
 }
