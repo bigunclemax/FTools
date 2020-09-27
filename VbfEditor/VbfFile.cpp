@@ -144,9 +144,10 @@ int VbfFile::Export(const string& out_dir) {
     SaveToFile(out_dir + header_name, &m_ascii_header[0], m_ascii_header.length());
     document.AddMember("header", Value(header_name.c_str(), allocator), allocator);
 
+    int i = 0;
     for (auto section : m_bin_sections) {
         stringstream str_buff;
-        str_buff << m_file_name << "_section_" << std::hex << section->start_addr << "_" << section->length << ".bin";
+        str_buff << m_file_name << "_section_" << ++i << "_" << std::hex << section->start_addr << "_" << section->length << ".bin";
 
         SaveToFile(out_dir + str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
         Value section_obj(kObjectType);
