@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_subdirectory(EifViewer)
 add_subdirectory(ImgSectionParser)
+add_subdirectory(TextSectionParser)
 add_subdirectory(VbfEditor)
 add_subdirectory(ZipRepacker)
 add_subdirectory(ImgUnpacker)
