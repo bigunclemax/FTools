@@ -7,9 +7,13 @@ This toolset useful for unpacking\repacking firmware part of the ford ipc which 
 - **vbfeditor** can be used to unpack\pack vbf files.
 - **imgparcer** can be used to extract .zip archives with images and .ttf fonts from image section.
 - **eifconverter** can turn a .eif image into a .bmp and back.
+- **textparser** can be used to extract IPC fw text lines to CSV format and pack them back.  
 
-#### How to
-#### imgunpkr
+[README russian version](README_ru.md)
+
+---
+
+## imgunpkr
 ##### Extract images and fonts
 `imgunpkr -u -o ./dest_dir original.vbf`  
 
@@ -39,7 +43,7 @@ As a result `./dest_dir/patched.vbf` will be created.
 
 ---
 
-#### eifconverter
+## eifconverter
 ##### Convert eif images to bmp  
 `./eifconverter -u ./logo.eif -o ./out.bmp`
 
@@ -53,9 +57,23 @@ EIF images has differ color depth and could be:
 
 ---
 
-#### vbfeditor
+## vbfeditor
 ##### Unpack vbf (extract binary sections)
 `vbfeditor -u path_to.vbf -o dir/to/extract`
 
 ##### Pack vbf  
 `vbfeditor -p vbf_conifg -o out/dir`
+
+---
+
+## textparser (alfa)  
+##### Extract text resources to .csv files  
+`textparser -u path/to/vbf_text_section.bin -o dir/to/extract`
+
+##### Modify resources  
+After extracting you will get two files `ui_alerts.csv` and `ui_texts.csv`  
+Modify strings of `line_content` as you wish  
+
+##### Pack text section  
+`textparser -p path/to/vbf_text_section.bin -o path/to/patched_vbf_text_section.bin`  
+> modified .csv files must be in the same directory as the original vbf_text_section.bin  
