@@ -81,7 +81,7 @@ class TextSectionPacker {
     }
 
 #pragma pack(1)
-    struct TextSection {
+    struct TextSection_mk3 {
 
         char header[0x19e2c]; //20 byte lines at 13790 (first uin16_t is index)
 
@@ -113,6 +113,38 @@ class TextSectionPacker {
             uint16_t height;
         } eif_head;
         char eif_content[8000];
+    };
+
+    struct TextSection_mk3_5 {
+
+        char header[0x1d680];
+
+        struct TextUI_L {
+            char line[0x28];
+        };
+
+        struct TextUI {
+            TextUI_L lines[0x438];
+        } ui_text_pack[18];
+
+        struct TextUI_L_ex {
+            char line[0x56];
+        };
+
+        struct TextUI_ex {
+            TextUI_L_ex lines[0x438];
+        } ui_text_pack_ex;
+
+        char unk[0x37ec];
+
+        struct TextAlerts_L {
+            uint16_t idx;
+            char     line[0xC6];
+        };
+
+        struct TextAlerts {
+            TextAlerts_L lines[0xf6];
+        } alerts_text_pack[19];
     };
 #pragma pack()
 
