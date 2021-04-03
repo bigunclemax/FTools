@@ -92,7 +92,8 @@ int VbfFile::OpenFile(const string& file_path) {
     while (i < file_buff.size()) {
 
         auto section_offset = i;
-        auto *new_section = new VbfBinarySection();
+        unique_ptr<VbfBinarySection> new_section(new VbfBinarySection());
+
         new_section->start_addr = ntohl(*reinterpret_cast<uint32_t *>(&file_buff[i]));
         i += sizeof(uint32_t);
         new_section->length = ntohl(*reinterpret_cast<uint32_t *>(&file_buff[i]));
@@ -111,7 +112,7 @@ int VbfFile::OpenFile(const string& file_path) {
             cout << "Warn. VBF section at 0x" << std::hex << section_offset <<" CRC16 mismatch" << endl;
         }
 
-        m_bin_sections.push_back(new_section);
+        m_bin_sections.push_back(move(new_section));
     }
 
     m_is_open = true;
@@ -145,7 +146,7 @@ int VbfFile::Export(const string& out_dir) {
     document.AddMember("header", Value(header_name.c_str(), allocator), allocator);
 
     int i = 0;
-    for (auto section : m_bin_sections) {
+    for (const auto& section : m_bin_sections) {
         stringstream str_buff;
         str_buff << m_file_name << "_section_" << ++i << "_" << std::hex << section->start_addr << "_" << section->length << ".bin";
 
@@ -221,7 +222,8 @@ int VbfFile::Import(const string& conf_file_path) {
 
             vbf_section.close();
 
-            auto *new_section = new VbfBinarySection();
+            unique_ptr<VbfBinarySection> new_section(new VbfBinarySection());
+
             new_section->start_addr = vbf_section_addr;
             new_section->length = vbf_section_size;
             new_section->data = vbf_section_data;
@@ -236,8 +238,8 @@ int VbfFile::Import(const string& conf_file_path) {
             crc32 = CRC::Calculate(new_section->data.data(), new_section->length, CRC::CRC_32(), crc32);
             crc32 = CRC::Calculate(&crc16_be, sizeof(new_section->crc16), CRC::CRC_32(), crc32);
 
-            m_bin_sections.push_back(new_section);
             m_content_size += (new_section->length + sizeof(uint32_t)*2 + sizeof(uint16_t));
+            m_bin_sections.push_back(move(new_section));
         }
     }
     m_CRC32 = crc32;
@@ -310,7 +312,7 @@ int VbfFile::SaveToFile(std::string file_path) {
 
     outfile.write(m_ascii_header.c_str(), m_ascii_header.length());
 
-    for(auto section :m_bin_sections)
+    for(const auto& section :m_bin_sections)
     {
         uint32_t length_be = htonl(*reinterpret_cast<uint32_t *>(&section->length));
         uint32_t addr_be = htonl(*reinterpret_cast<uint32_t *>(&section->start_addr));

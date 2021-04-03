@@ -25,7 +25,7 @@ class VbfFile {
     uint32_t m_CRC32;           //whole binary data CRC
     uint32_t m_content_size;    //whole binary data size in bytes
     std::string m_ascii_header;
-    std::list <VbfBinarySection *> m_bin_sections;
+    std::list <std::unique_ptr<VbfBinarySection>> m_bin_sections;
     bool m_is_open = false;
 
     uint32_t calcCRC32();
