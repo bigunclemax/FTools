@@ -109,6 +109,7 @@ public:
     static void bmpFileToEifFile(const fs::path& file_name, uint8_t depth, const fs::path& out_file_name,
             const fs::path& palette_file_name = "");
     static int bulkPack(const fs::path& bmp_files, const fs::path& out_dir);
+    static std::unique_ptr<EifImageBase> makeEif(const vector<uint8_t>& data);
 };
 
 }

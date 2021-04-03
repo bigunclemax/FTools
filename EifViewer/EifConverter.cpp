@@ -538,3 +538,22 @@ int EifConverter::bulkPack(const fs::path& bmp_dir, const fs::path& out_dir) {
 
     return 0;
 }
+
+unique_ptr<EifImageBase> EifConverter::makeEif(const vector<uint8_t> &data) {
+
+    unique_ptr<EifImageBase> image;
+
+    if (data[7] == EIF_TYPE_MONOCHROME) {
+        image = make_unique<EifImage8bit>();
+    } else if (data[7] == EIF_TYPE_MULTICOLOR) {
+        image = make_unique<EifImage16bit>();
+    } else if (data[7] == EIF_TYPE_SUPERCOLOR) {
+        image = make_unique<EifImage32bit>();
+    } else {
+        throw runtime_error("Unsupported EIF format");
+    }
+
+    image->openEif(data);
+
+    return image;
+}
