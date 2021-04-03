@@ -99,6 +99,18 @@ void EifImage8bit::saveBmp(const fs::path& file_name) const {
     bmp_image.WriteToFile(file_name.string().c_str());
 }
 
+vector<uint8_t> EifImage8bit::getBitmapRBGA() const {
+
+    vector<uint8_t> bitmap(m_bitmap_data.size() * 4);
+    for (int i = 0; i < m_bitmap_data.size(); ++i) {
+        bitmap[i * 4 + 0] = m_bitmap_data[i];
+        bitmap[i * 4 + 1] = m_bitmap_data[i];
+        bitmap[i * 4 + 2] = m_bitmap_data[i];
+        bitmap[i * 4 + 3] = 0xFF; // no transparency for 8bit eif
+    }
+    return bitmap;
+}
+
 int EifImage8bit::openEif(const vector<uint8_t>& data) {
 
     if(data.size() < sizeof(EifBaseHeader)){
@@ -384,6 +396,19 @@ void EifImage32bit::saveBmp(const fs::path& file_name) const {
     bmp_image.WriteToFile(file_name.string().c_str());
 }
 
+vector<uint8_t> EifImage32bit::getBitmapRBGA() const {
+
+    vector<uint8_t> bitmap(m_bitmap_data.size() * 4);
+    /* swap BGRA to RGBA */
+    for (int i = 0; i < m_bitmap_data.size(); i += 4) {
+        bitmap[i + 0] = m_bitmap_data[i + 2];
+        bitmap[i + 1] = m_bitmap_data[i + 1];
+        bitmap[i + 2] = m_bitmap_data[i + 0];
+        bitmap[i + 3] = m_bitmap_data[i + 3];
+    }
+    return bitmap;
+}
+
 int EifImage32bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
@@ -475,7 +500,7 @@ void EifConverter::mapMultiPalette(vector<EifImage16bit>& eifs)
     exq_no_transparency(pExq);
 
     for (const auto& eif :eifs) {
-        exq_feed(pExq, (unsigned char *)eif.getBitmap().data(), (int)eif.getBitmap().size()/4);
+        exq_feed(pExq, (unsigned char *) eif.getBitmapRBGA().data(), (int) eif.getBitmapRBGA().size() / 4);
     }
 
     exq_quantize(pExq, EIF_MULTICOLOR_NUM_COLORS);
