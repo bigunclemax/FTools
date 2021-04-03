@@ -49,26 +49,26 @@ protected:
     unsigned width =0;
     unsigned height =0;
     vector<uint8_t> m_bitmap_data;
-    virtual void store_palette(vector<uint8_t>& data) {};
-    virtual void store_bitmap(vector<uint8_t> &data) {data.insert(end(data), begin(m_bitmap_data), end(m_bitmap_data));};
+    virtual void store_palette(vector<uint8_t>& data) const {};
+    virtual void store_bitmap(vector<uint8_t> &data) const {data.insert(end(data), begin(m_bitmap_data), end(m_bitmap_data));};
 public:
     virtual int openEif(const vector<uint8_t>& data) = 0;
-    virtual int getType() = 0;
+    [[nodiscard]] virtual int getType() const = 0;
     virtual int openBmp(const fs::path& fileName) = 0;
-    virtual void saveBmp(const fs::path& fileName) = 0;
-    virtual void saveEif(const fs::path& fileName);
-    virtual vector<uint8_t> saveEifToVector();
+    virtual void saveBmp(const fs::path& fileName) const = 0;
+    virtual void saveEif(const fs::path& fileName) const;
+    [[nodiscard]] virtual vector<uint8_t> saveEifToVector() const;
     virtual ~EifImageBase()= default;
-    virtual unsigned getWidth() { return width; };
-    virtual unsigned getHeight() { return height; };
+    [[nodiscard]] virtual unsigned getWidth() const { return width; };
+    [[nodiscard]] virtual unsigned getHeight() const { return height; };
 };
 
 class EifImage8bit: public EifImageBase {
     EIF_TYPE type = EIF_TYPE_MONOCHROME;
 public:
-    inline int getType() override { return type; };
+    [[nodiscard]] inline int getType() const override { return type; };
     int openEif(const vector<uint8_t>& data) override;
-    void saveBmp(const fs::path& file_name) override;
+    void saveBmp(const fs::path& file_name) const override;
     int openBmp(const fs::path& file_name) override;
 };
 
@@ -76,13 +76,13 @@ class EifImage16bit: public EifImageBase {
     EIF_TYPE type = EIF_TYPE_MULTICOLOR;
     vector<uint8_t> m_palette;
     vector<uint8_t> m_alpha;
-    void store_palette(vector<uint8_t> &data) override;
-    void store_bitmap(vector<uint8_t> &data) override;
+    void store_palette(vector<uint8_t> &data) const override;
+    void store_bitmap(vector<uint8_t> &data) const override;
 public:
-    inline int getType() override { return type; };
+    [[nodiscard]] inline int getType() const override { return type; };
     EifImage16bit() = default;
     int openEif(const vector<uint8_t>& data) override;
-    void saveBmp(const fs::path& file_name) override;
+    void saveBmp(const fs::path& file_name) const override;
     int openBmp(const fs::path& file_name) override;
     int setPalette(const vector<uint8_t>& data);
     void savePalette(const fs::path& file_name);
@@ -92,10 +92,10 @@ public:
 class EifImage32bit: public EifImageBase {
     EIF_TYPE type = EIF_TYPE_SUPERCOLOR;
 public:
-    inline int getType() override { return type; };
+    [[nodiscard]] inline int getType() const override { return type; };
     int openEif(const vector<uint8_t>& data) override;
     int openBmp(const fs::path& file_name) override;
-    void saveBmp(const fs::path& file_name) override;
+    void saveBmp(const fs::path& file_name) const override;
 };
 
 class EifConverter {

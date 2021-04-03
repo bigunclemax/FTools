@@ -11,7 +11,7 @@
 
 using namespace EIF;
 
-vector<uint8_t> EifImageBase::saveEifToVector() {
+vector<uint8_t> EifImageBase::saveEifToVector() const {
 
     vector<uint8_t> data;
 
@@ -45,7 +45,7 @@ vector<uint8_t> EifImageBase::saveEifToVector() {
     return data;
 }
 
-void EifImageBase::saveEif(const fs::path& file_name) {
+void EifImageBase::saveEif(const fs::path& file_name) const {
     FTUtils::vectorToFile(file_name,saveEifToVector());
 }
 
@@ -77,7 +77,7 @@ int EifImage8bit::openBmp(const fs::path& file_name) {
     return 0;
 }
 
-void EifImage8bit::saveBmp(const fs::path& file_name){
+void EifImage8bit::saveBmp(const fs::path& file_name) const {
 
     BMP bmp_image;
     bmp_image.SetSize((int)width, (int)height);
@@ -148,7 +148,7 @@ int EifImage8bit::openEif(const vector<uint8_t>& data) {
     return 0;
 }
 
-void EifImage16bit::store_palette(vector<uint8_t> &data) {
+void EifImage16bit::store_palette(vector<uint8_t> &data) const {
 
     if (m_palette.size() != EIF_MULTICOLOR_NUM_COLORS * 4) {
         throw runtime_error("Palette has wrong size");
@@ -161,14 +161,14 @@ void EifImage16bit::store_palette(vector<uint8_t> &data) {
     }
 }
 
-void EifImage16bit::store_bitmap(vector<uint8_t> &data) {
+void EifImage16bit::store_bitmap(vector<uint8_t> &data) const {
 
     auto num_pixels = width * height;
     vector<uint8_t> mapped_data(num_pixels);
 
     exq_data *pExq = exq_init();
     exq_no_transparency(pExq);
-    exq_set_palette(pExq, m_palette.data(), EIF_MULTICOLOR_NUM_COLORS);
+    exq_set_palette(pExq, const_cast<unsigned char *>(m_palette.data()), EIF_MULTICOLOR_NUM_COLORS);
     exq_map_image(pExq, num_pixels, (unsigned char *)m_bitmap_data.data(), mapped_data.data());
     exq_free(pExq);
 
@@ -270,7 +270,7 @@ int EifImage16bit::openBmp(const fs::path& file_name) {
     return 0;
 }
 
-void EifImage16bit::saveBmp(const fs::path& file_name) {
+void EifImage16bit::saveBmp(const fs::path& file_name) const {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
@@ -362,7 +362,7 @@ int EifImage32bit::openEif(const vector<uint8_t> &data) {
     return 0;
 }
 
-void EifImage32bit::saveBmp(const fs::path& file_name) {
+void EifImage32bit::saveBmp(const fs::path& file_name) const {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
