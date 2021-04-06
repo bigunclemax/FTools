@@ -181,12 +181,12 @@ void EifImage16bit::store_bitmap(vector<uint8_t> &data) const {
     exq_data *pExq = exq_init();
     exq_no_transparency(pExq);
     exq_set_palette(pExq, const_cast<unsigned char *>(m_palette.data()), EIF_MULTICOLOR_NUM_COLORS);
-    exq_map_image(pExq, num_pixels, (unsigned char *)m_bitmap_data.data(), mapped_data.data());
+    exq_map_image(pExq, num_pixels, const_cast<unsigned char *>(m_bitmap_data.data()), mapped_data.data());
     exq_free(pExq);
 
     for(int i=0; i < num_pixels; ++i) {
         data.push_back(mapped_data[i]);
-        data.push_back(m_alpha[i]);
+        data.push_back(m_bitmap_data[i * 4 + 3]);
     }
 }
 
@@ -231,14 +231,12 @@ int EifImage16bit::openEif(const vector<uint8_t> &data) {
 
     //RGBA
     m_bitmap_data.resize(header.height * header.width * 4);
-    m_alpha.resize(header.height * header.width);
 
     for (auto i = 0; i < (data.size() - data_offset)/2; ++i) {
         m_bitmap_data[i*4+0] = m_palette[data[data_offset + i*2]*4 + 0];
         m_bitmap_data[i*4+1] = m_palette[data[data_offset + i*2]*4 + 1];
         m_bitmap_data[i*4+2] = m_palette[data[data_offset + i*2]*4 + 2];
-        m_bitmap_data[i*4+3] = 0;
-        m_alpha[i] = data[data_offset + i*2 + 1];
+        m_bitmap_data[i*4+3] = data[data_offset + i*2 + 1];
     }
 
     width = header.width;
@@ -255,15 +253,14 @@ int EifImage16bit::openBmp(const fs::path& file_name) {
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
     m_bitmap_data.resize(height * width * 4);
-    m_alpha.resize(width * height);
 
     for(auto j =0; j < height; j++){
         for(auto i=0; i < width; i++){
             RGBApixel rgb_pixel = bmp_image.GetPixel(i, j);
-            m_alpha[width*j+i] = rgb_pixel.Alpha;
             m_bitmap_data[(width*j+i)*4+0] = rgb_pixel.Red;
             m_bitmap_data[(width*j+i)*4+1] = rgb_pixel.Green;
             m_bitmap_data[(width*j+i)*4+2] = rgb_pixel.Blue;
+            m_bitmap_data[(width*j+i)*4+3] = rgb_pixel.Alpha;
         }
     }
 
@@ -291,7 +288,7 @@ void EifImage16bit::saveBmp(const fs::path& file_name) const {
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < width; ++i){
             RGBApixel rgb_pixel;
-            rgb_pixel.Alpha = m_alpha[width*j+i];
+            rgb_pixel.Alpha = m_bitmap_data[(width*j+i)*4+3];
             rgb_pixel.Red   = m_bitmap_data[(width*j+i)*4+0];
             rgb_pixel.Green = m_bitmap_data[(width*j+i)*4+1];
             rgb_pixel.Blue  = m_bitmap_data[(width*j+i)*4+2];
@@ -323,6 +320,10 @@ void EifImage16bit::savePalette(const fs::path& file_name) {
     }
 
     FTUtils::vectorToFile(file_name, m_palette);
+}
+
+vector<uint8_t> EifImage16bit::getBitmapRBGA() const {
+    return m_bitmap_data;
 }
 
 int EifImage32bit::openEif(const vector<uint8_t> &data) {

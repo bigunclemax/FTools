@@ -77,7 +77,6 @@ public:
 class EifImage16bit: public EifImageBase {
     EIF_TYPE type = EIF_TYPE_MULTICOLOR;
     vector<uint8_t> m_palette;
-    vector<uint8_t> m_alpha;
     void store_palette(vector<uint8_t> &data) const override;
     void store_bitmap(vector<uint8_t> &data) const override;
 public:
@@ -88,7 +87,7 @@ public:
     int openBmp(const fs::path& file_name) override;
     int setPalette(const vector<uint8_t>& data);
     void savePalette(const fs::path& file_name);
-    [[nodiscard]] vector<uint8_t> getBitmapRBGA() const override { return m_bitmap_data; };
+    [[nodiscard]] vector<uint8_t> getBitmapRBGA() const override;
 };
 
 class EifImage32bit: public EifImageBase {
