@@ -43,6 +43,7 @@ int VbfFile::OpenFile(const string& file_path) {
     m_file_length = file_buff.size();
 
     //start read ascii header and search first '{'
+    m_ascii_header.clear();
     auto opened_brackets = 0;
     for (auto symbol : file_buff) {
         m_ascii_header.push_back(symbol);
@@ -88,6 +89,7 @@ int VbfFile::OpenFile(const string& file_path) {
     }
 
     //start read binary sections
+    m_bin_sections.clear();
     auto i = data_section_offset;
     while (i < file_buff.size()) {
 
