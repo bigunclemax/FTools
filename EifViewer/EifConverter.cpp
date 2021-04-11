@@ -250,6 +250,8 @@ int EifImage16bit::openBmp(const fs::path& file_name) {
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.string().c_str());
 
+    bool hasAlpha = (bmp_image.TellBitDepth() == 32);
+
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
     m_bitmap_data.resize(height * width * 4);
@@ -260,7 +262,7 @@ int EifImage16bit::openBmp(const fs::path& file_name) {
             m_bitmap_data[(width*j+i)*4+0] = rgb_pixel.Red;
             m_bitmap_data[(width*j+i)*4+1] = rgb_pixel.Green;
             m_bitmap_data[(width*j+i)*4+2] = rgb_pixel.Blue;
-            m_bitmap_data[(width*j+i)*4+3] = rgb_pixel.Alpha;
+            m_bitmap_data[(width*j+i)*4+3] = hasAlpha ? rgb_pixel.Alpha : 0xFF;
         }
     }
 
@@ -415,6 +417,8 @@ int EifImage32bit::openBmp(const fs::path& file_name) {
     BMP bmp_image;
     bmp_image.ReadFromFile(file_name.string().c_str());
 
+    bool hasAlpha = (bmp_image.TellBitDepth() == 32);
+
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
 
@@ -426,7 +430,7 @@ int EifImage32bit::openBmp(const fs::path& file_name) {
 
             RGBApixel rgb_pixel = bmp_image.GetPixel(i, j);
 
-            m_bitmap_data[0 + 3 + j * width * 4 + i * 4] = rgb_pixel.Alpha;
+            m_bitmap_data[0 + 3 + j * width * 4 + i * 4] = hasAlpha ? rgb_pixel.Alpha : 0xFF;
             m_bitmap_data[0 + 2 + j * width * 4 + i * 4] = rgb_pixel.Red;
             m_bitmap_data[0 + 1 + j * width * 4 + i * 4] = rgb_pixel.Green;
             m_bitmap_data[0 + 0 + j * width * 4 + i * 4] = rgb_pixel.Blue;
