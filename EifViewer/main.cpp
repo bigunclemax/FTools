@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         } else if(unpack) {
 
             auto v = FTUtils::fileToVector(input_file_name);
-            EIF::EifConverter::eifToBmpFile(v, out_file_name, palette_file_name);
+            EIF::EifConverter::eifToBmpFile(v, out_file_name, palette_file_name, true);
 
         } else if(pack) {
 

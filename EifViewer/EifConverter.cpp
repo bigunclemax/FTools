@@ -440,8 +440,8 @@ int EifImage32bit::openBmp(const fs::path& file_name) {
     return 0;
 }
 
-void EifConverter::eifToBmpFile(const vector<uint8_t>& data, const fs::path& out_file_name,
-        const fs::path& palette_file_name)
+void EifConverter::eifToBmpFile(const vector<uint8_t> &data, const fs::path &out_file_name,
+                                const fs::path &palette_file_name, bool store_palette)
 {
 
     EifImageBase* image;
@@ -462,7 +462,7 @@ void EifConverter::eifToBmpFile(const vector<uint8_t>& data, const fs::path& out
 
     image->openEif(data);
     image->saveBmp(out_file_name);
-    if(data[7] == EIF_TYPE_MULTICOLOR) {
+    if (data[7] == EIF_TYPE_MULTICOLOR && store_palette) {
         auto pal_path(out_file_name);
         dynamic_cast<EifImage16bit*>(image)->savePalette(pal_path.replace_extension(".pal"));
     }
