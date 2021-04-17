@@ -147,7 +147,7 @@ int EifImage8bit::openEif(const vector<uint8_t>& data) {
 
     m_bitmap_data.clear();
     m_bitmap_data.reserve(header.height * header.width);
-    for (auto i =data_offset; i < data.size(); i+=aligned4_width) {
+    for (unsigned i = data_offset; i < data.size(); i+=aligned4_width) {
 
         m_bitmap_data.insert(end(m_bitmap_data),
                            data.begin() + i,
@@ -181,7 +181,7 @@ void EifImage16bit::store_bitmap(vector<uint8_t> &data) const {
     exq_data *pExq = exq_init();
     exq_no_transparency(pExq);
     exq_set_palette(pExq, const_cast<unsigned char *>(m_palette.data()), EIF_MULTICOLOR_NUM_COLORS);
-    exq_map_image(pExq, num_pixels, const_cast<unsigned char *>(m_bitmap_data.data()), mapped_data.data());
+    exq_map_image(pExq, (int)num_pixels, const_cast<unsigned char *>(m_bitmap_data.data()), mapped_data.data());
     exq_free(pExq);
 
     for(int i=0; i < num_pixels; ++i) {
@@ -364,11 +364,11 @@ int EifImage32bit::openEif(const vector<uint8_t> &data) {
 
     m_bitmap_data.clear();
     m_bitmap_data.reserve(header.height * header.width);
-    for (auto i =data_offset; i < data.size(); i+=aligned4_width) {
+    for (unsigned i = data_offset; i < data.size(); i+=aligned4_width) {
 
         m_bitmap_data.insert(end(m_bitmap_data),
                            data.begin() + i,
-                           data.begin() + i + header.width * sizeof(uint32_t));
+                           data.begin() + i + (unsigned)(header.width * sizeof(uint32_t)));
     }
 
     width = header.width;
@@ -501,7 +501,7 @@ int EifConverter::bulkPack(const fs::path& bmp_dir, const fs::path& out_dir) {
         if(p.path().extension() == ".bmp")
             bmp_files.push_back(p.path());
     }
-    int f_count = bmp_files.size();
+    auto f_count = bmp_files.size();
 
     vector<EifImage16bit> eifs(f_count);
 
