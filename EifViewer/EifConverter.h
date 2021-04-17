@@ -62,6 +62,8 @@ public:
     [[nodiscard]] virtual unsigned getWidth() const { return width; };
     [[nodiscard]] virtual unsigned getHeight() const { return height; };
     [[nodiscard]] virtual vector<uint8_t> getBitmapRBGA() const = 0;
+    virtual int setPalette(const vector<uint8_t>& data) { return 0; };
+    virtual void savePalette(const fs::path& file_name) const {};
 };
 
 class EifImage8bit: public EifImageBase {
@@ -85,8 +87,8 @@ public:
     int openEif(const vector<uint8_t>& data) override;
     void saveBmp(const fs::path& file_name) const override;
     int openBmp(const fs::path& file_name) override;
-    int setPalette(const vector<uint8_t>& data);
-    void savePalette(const fs::path& file_name);
+    int setPalette(const vector<uint8_t>& data) override;
+    void savePalette(const fs::path& file_name) const override;
     [[nodiscard]] vector<uint8_t> getBitmapRBGA() const override;
 };
 

@@ -266,7 +266,7 @@ int EifImage16bit::openBmp(const fs::path& file_name) {
         }
     }
 
-    if(m_palette.empty()) { //TODO: don't need to generate a palette at this step
+    if(m_palette.empty()) {
 
         //generated palette
         exq_data *pExq = exq_init();
@@ -314,7 +314,7 @@ int EifImage16bit::setPalette(const vector<uint8_t> &data) {
     return 0;
 }
 
-void EifImage16bit::savePalette(const fs::path& file_name) {
+void EifImage16bit::savePalette(const fs::path& file_name) const {
 
     if(m_palette.empty()) {
         cerr << "Error: palette wrong size" << endl;
