@@ -444,59 +444,33 @@ void EifConverter::eifToBmpFile(const vector<uint8_t> &data, const fs::path &out
                                 const fs::path &palette_file_name, bool store_palette)
 {
 
-    EifImageBase* image;
+    auto image = makeEif((EIF_TYPE) data[7]);
 
-    if(data[7] == EIF_TYPE_MONOCHROME) {
-        image = new EifImage8bit;
-    } else if(data[7] == EIF_TYPE_MULTICOLOR) {
-        image = new EifImage16bit;
-        if(!palette_file_name.empty()) {
-            auto palette = FTUtils::fileToVector(palette_file_name);
-            dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
-        }
-    } else if(data[7] == EIF_TYPE_SUPERCOLOR){
-        image = new EifImage32bit;
-    } else {
-        throw runtime_error("Unsupported EIF format");
+    if(!palette_file_name.empty() && image->getType() == EIF_TYPE_MULTICOLOR) {
+        auto palette = FTUtils::fileToVector(palette_file_name);
+        image->setPalette(palette);
     }
 
     image->openEif(data);
     image->saveBmp(out_file_name);
-    if (data[7] == EIF_TYPE_MULTICOLOR && store_palette) {
+    if (image->getType() == EIF_TYPE_MULTICOLOR && store_palette) {
         auto pal_path(out_file_name);
-        dynamic_cast<EifImage16bit*>(image)->savePalette(pal_path.replace_extension(".pal"));
+        image->savePalette(pal_path.replace_extension(".pal"));
     }
-
-    delete image;
 }
 
 void EifConverter::bmpFileToEifFile(const fs::path& file_name, uint8_t depth, const fs::path& out_file_name,const fs::path& palette_file_name)
 {
 
-    EifImageBase* image;
-    switch (depth) {
-        case 8:
-            image = new EifImage8bit;
-            break;
-        case 16: {
-            image = new EifImage16bit;
-            if(!palette_file_name.empty()) {
-                auto palette = FTUtils::fileToVector(palette_file_name);
-                dynamic_cast<EifImage16bit*>(image)->setPalette(palette);
-            }
-        }
-            break;
-        case 32:
-            image = new EifImage32bit;
-            break;
-        default:
-            throw runtime_error("Incorrect depth value");
+    auto image = makeEif(depthToEifType(depth));
+
+    if(!palette_file_name.empty()) {
+        auto palette = FTUtils::fileToVector(palette_file_name);
+        image->setPalette(palette);
     }
 
     image->openBmp(file_name);
     image->saveEif(out_file_name);
-
-    delete image;
 }
 
 void EifConverter::mapMultiPalette(vector<EifImage16bit>& eifs)
@@ -544,21 +518,19 @@ int EifConverter::bulkPack(const fs::path& bmp_dir, const fs::path& out_dir) {
     return 0;
 }
 
-unique_ptr<EifImageBase> EifConverter::makeEif(const vector<uint8_t> &data) {
+unique_ptr<EifImageBase> EifConverter::makeEif(EIF_TYPE type) {
 
     unique_ptr<EifImageBase> image;
 
-    if (data[7] == EIF_TYPE_MONOCHROME) {
+    if (type == EIF_TYPE_MONOCHROME) {
         image = make_unique<EifImage8bit>();
-    } else if (data[7] == EIF_TYPE_MULTICOLOR) {
+    } else if (type == EIF_TYPE_MULTICOLOR) {
         image = make_unique<EifImage16bit>();
-    } else if (data[7] == EIF_TYPE_SUPERCOLOR) {
+    } else if (type == EIF_TYPE_SUPERCOLOR) {
         image = make_unique<EifImage32bit>();
     } else {
         throw runtime_error("Unsupported EIF format");
     }
-
-    image->openEif(data);
 
     return image;
 }

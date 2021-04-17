@@ -44,6 +44,19 @@ struct BitmapData {
     unsigned height;
 };
 
+inline EIF_TYPE depthToEifType(int depth) {
+    switch (depth) {
+        case 8:
+            return EIF_TYPE_MONOCHROME;
+        case 16:
+            return EIF_TYPE_MULTICOLOR;
+        case 32:
+            return EIF_TYPE_SUPERCOLOR;
+        default:
+            throw runtime_error("Incorrect depth value");
+    }
+}
+
 class EifImageBase {
 protected:
     unsigned width =0;
@@ -110,7 +123,7 @@ public:
     static void bmpFileToEifFile(const fs::path& file_name, uint8_t depth, const fs::path& out_file_name,
             const fs::path& palette_file_name = "");
     static int bulkPack(const fs::path& bmp_files, const fs::path& out_dir);
-    static std::unique_ptr<EifImageBase> makeEif(const vector<uint8_t>& data);
+    static unique_ptr<EifImageBase> makeEif(EIF_TYPE type);
 };
 
 }
