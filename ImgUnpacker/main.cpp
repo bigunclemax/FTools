@@ -350,21 +350,9 @@ int RepackResources(const fs::path& config_path, ImageSection& img_sec, const st
             } else {
 
                 // create eif from BMP and save it to vector
-                EIF::EifImageBase* eif;
-
-                if(res_csv_data.type == 8) {
-                    eif = new EIF::EifImage8bit();
-                } else if(res_csv_data.type == 32) {
-                    eif = new EIF::EifImage32bit();
-                } else if(res_csv_data.type == 16) {
-                    eif = new EIF::EifImage16bit();
-                } else {
-                    throw runtime_error("Unknown resource type " + res_name.string());
-                }
-
+                auto eif = EIF::EifConverter::makeEif(EIF::depthToEifType((int)res_csv_data.type));
                 eif->openBmp(res_path.string());
                 auto res_bin = eif->saveEifToVector();
-                delete eif;
 
                 CompressAndReplaceEIF(img_sec, res_csv_data.idx, res_bin, res_name.string());
             }
