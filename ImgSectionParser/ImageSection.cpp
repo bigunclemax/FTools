@@ -112,11 +112,11 @@ void ImageSection::HeaderToCsv(const fs::path& csv_file_path) {
                 << hr.Y << ","
                 << (int)hr.type << ","
                 << (int)hr.Z << ","
-                << (int)hr.unk0 << ","
+                << (int)hr.intensity << ","
                 << (int)hr.R << ","
                 << (int)hr.G << ","
                 << (int)hr.B << ","
-                << (int)hr.A << endl;
+                << (int)hr.palette_id << endl;
     }
     export_list.close();
 }
@@ -148,11 +148,11 @@ void ImageSection::HeaderFromCsv(const fs::path& csv_file_path) {
                 hr.Y ,
                 hr.type ,
                 hr.Z ,
-                hr.unk0 ,
+                hr.intensity ,
                 hr.R ,
                 hr.G ,
                 hr.B ,
-                hr.A ))
+                hr.palette_id ))
     {
         m_header_data.push_back(hr);
     }

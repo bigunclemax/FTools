@@ -106,12 +106,12 @@ private:
         uint32_t Y;
         uint8_t type;
         uint8_t Z;
-        uint8_t unk0;
+        uint8_t intensity;
         uint8_t R;
         uint8_t G;
         uint8_t B;
-        uint8_t A;
-        uint8_t unk5;
+        uint8_t palette_id;
+        uint8_t zero;
     };
 
     static void GetItemData(const std::vector<uint8_t>& bin_data, const char* fileName, std::vector<uint8_t>& out);
