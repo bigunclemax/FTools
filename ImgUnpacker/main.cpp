@@ -142,7 +142,7 @@ int UnpackImg(const fs::path& in_path, const fs::path& out_path) {
     //unpack image section
     ImageSection img_sec;
     img_sec.Parse(img_sec_bin);
-    img_sec.HeaderToCsv(out_path / "header_lines.csv");
+    img_sec.HeaderToCsv(img_sec.getHeaderData(), out_path / "header_lines.csv");
 
     //unpack eifs
     std::ofstream export_list (out_path / "export_list.csv");

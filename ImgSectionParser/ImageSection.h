@@ -69,10 +69,29 @@ class ImageSection {
 
 public:
 
+    struct HeaderRecord {
+        uint32_t width;
+        uint32_t height;
+        uint32_t X;
+        uint32_t Y;
+        uint8_t type;
+        uint8_t Z;
+        uint8_t intensity;
+        uint8_t R;
+        uint8_t G;
+        uint8_t B;
+        uint8_t palette_id;
+        uint8_t zero;
+    };
+
     enum enResType : uint8_t {
         RT_TTF,
         RT_ZIP
     };
+
+    static void HeaderToCsv(const std::vector<HeaderRecord>& header_data, const fs::path& csv_file_path);
+    static std::vector<HeaderRecord> HeaderFromCsv(const fs::path& csv_file_path);
+
     ImageSection()=default;
     void Parse(const vector<uint8_t>& bin_data);
     void ParseFile(const fs::path &file);
@@ -87,8 +106,9 @@ public:
     int DelItem();
     int ReplaceItem(enResType res_type, unsigned idx, const vector<uint8_t>& bin_data,
             uint32_t w=0, uint32_t h=0, uint8_t t=0);
-    void HeaderToCsv(const fs::path& csv_file_path);
-    void HeaderFromCsv(const fs::path& csv_file_path);
+
+    [[nodiscard]] const std::vector<HeaderRecord>& getHeaderData() const { return m_header_data; };
+    void setHeaderData(const std::vector<HeaderRecord>& header_data) { m_header_data = header_data; };
 private:
 
     struct Item {
@@ -97,21 +117,6 @@ private:
         uint32_t  height;    // for zip only
         uint8_t   img_type;  // for zip only
         std::vector<uint8_t> data;
-    };
-
-    struct HeaderRecord {
-        uint32_t width;
-        uint32_t height;
-        uint32_t X;
-        uint32_t Y;
-        uint8_t type;
-        uint8_t Z;
-        uint8_t intensity;
-        uint8_t R;
-        uint8_t G;
-        uint8_t B;
-        uint8_t palette_id;
-        uint8_t zero;
     };
 
     static void GetItemData(const std::vector<uint8_t>& bin_data, const char* fileName, std::vector<uint8_t>& out);

@@ -91,7 +91,7 @@ void ImageSection::Parse(const vector<uint8_t> &bin_data) {
         GetItemData(bin_data, ttf_header_ptr[i].fileName, item.data);
     }
 }
-void ImageSection::HeaderToCsv(const fs::path& csv_file_path) {
+void ImageSection::HeaderToCsv(const std::vector<HeaderRecord>& header_data, const fs::path& csv_file_path) {
     std::ofstream export_list (csv_file_path);
     export_list << H_WIDTH << ","
             << H_HEIGHT << ","
@@ -105,7 +105,7 @@ void ImageSection::HeaderToCsv(const fs::path& csv_file_path) {
             << H_U3 << ","
             << H_U4 << endl;
 
-    for(const auto& hr : m_header_data) {
+    for(const auto& hr : header_data) {
         export_list << hr.width << ","
                 << hr.height << ","
                 << hr.X << ","
@@ -121,10 +121,10 @@ void ImageSection::HeaderToCsv(const fs::path& csv_file_path) {
     export_list.close();
 }
 
-void ImageSection::HeaderFromCsv(const fs::path& csv_file_path) {
+std::vector<ImageSection::HeaderRecord> ImageSection::HeaderFromCsv(const fs::path &csv_file_path) {
 
-    m_header_data.clear();
-    m_header_data.reserve(2000);
+    std::vector<HeaderRecord> header_data;
+    header_data.reserve(2000);
 
     io::CSVReader<11> in(csv_file_path.string());
     in.read_header(io::ignore_extra_column,
@@ -154,8 +154,10 @@ void ImageSection::HeaderFromCsv(const fs::path& csv_file_path) {
                 hr.B ,
                 hr.palette_id ))
     {
-        m_header_data.push_back(hr);
+        header_data.push_back(hr);
     }
+
+    return header_data;
 }
 
 int ImageSection::Export(const fs::path &out_path, const string& name_prefix) {
@@ -171,7 +173,7 @@ int ImageSection::Export(const fs::path &out_path, const string& name_prefix) {
 
     // save header
     auto out_file_str = (name_prefix + "_header.csv");
-    HeaderToCsv(out_file_str);
+    HeaderToCsv(m_header_data, out_file_str);
     document.AddMember("header", Value(out_file_str.c_str(), allocator), allocator);
     document.AddMember("unknown-int", Value().SetUint64(m_unknownInt), allocator);
 
