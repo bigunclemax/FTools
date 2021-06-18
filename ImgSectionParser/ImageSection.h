@@ -10,7 +10,8 @@
 #include <filesystem>
 
 namespace fs = std::filesystem;
-using namespace std;
+using std::vector;
+using std::string;
 
 struct zip_file {
     uint32_t width;

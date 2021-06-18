@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <list>
 
+using namespace std;
 using namespace EIF;
 
 vector<uint8_t> EifImageBase::saveEifToVector() const {

@@ -25,6 +25,7 @@ static const char* H_U4 = "Palette";
 static const char* H_U5 = "Terminator";
 
 using namespace rapidjson;
+using namespace std;
 
 void ImageSection::GetItemData(const vector<uint8_t>& bin_data, const char* fileName, vector<uint8_t>& out) {
 

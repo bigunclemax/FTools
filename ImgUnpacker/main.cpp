@@ -21,6 +21,7 @@ static const char* ITEM_PALETTE_CRC = "palette_crc16";
 static const char* CUSTOM_DIR = "custom";
 
 namespace fs = std::filesystem;
+using namespace std;
 
 struct Opts {
     fs::path conf_p;

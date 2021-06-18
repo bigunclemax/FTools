@@ -15,7 +15,9 @@
 #define VBFEDIT_EIFIMAGE_H
 
 namespace fs = std::filesystem;
-using namespace std;
+using std::vector;
+using std::unique_ptr;
+using std::runtime_error;
 
 namespace EIF {
 
