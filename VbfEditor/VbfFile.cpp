@@ -249,7 +249,7 @@ int VbfFile::Import(const string& conf_file_path) {
     m_ascii_header = vbf_header;
     m_is_open = true;
 
-    return -1;
+    return 0;
 }
 
 uint32_t VbfFile::calcCRC32() {
