@@ -12,8 +12,7 @@ configure_file (
         "${PROJECT_BINARY_DIR}/VbfeditConfig.h"
 )
 
-# add the binary tree to the search path for include files
-# so that we will find TutorialConfig.h
+include_directories(../utils)
 include_directories("${PROJECT_BINARY_DIR}")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)

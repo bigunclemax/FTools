@@ -12,6 +12,7 @@
 #include <CRC.h>
 #include <sstream>
 #include "VbfFile.h"
+#include <utils.h>
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -127,16 +128,6 @@ int VbfFile::Export(const string& out_dir) {
         return -1;
     }
 
-    auto SaveToFile = [](const string& file_name, char *data_ptr, int data_len) {
-        ofstream out_file(file_name, ios::out | ios::binary);
-        if (!out_file) {
-            cerr << "File " << file_name << " can't be created" << endl;
-        } else {
-            out_file.write(data_ptr, data_len);
-        }
-        out_file.close();
-    };
-
     Document document;
     document.SetObject();
     Document::AllocatorType& allocator = document.GetAllocator();
@@ -144,7 +135,7 @@ int VbfFile::Export(const string& out_dir) {
     Value sections(kArrayType);
 
     string header_name = m_file_name + "_ascii_head.txt";
-    SaveToFile(out_dir + header_name, &m_ascii_header[0], m_ascii_header.length());
+    FTUtils::bufferToFile(out_dir + header_name, &m_ascii_header[0], m_ascii_header.length());
     document.AddMember("header", Value(header_name.c_str(), allocator), allocator);
 
     int i = 0;
@@ -152,7 +143,7 @@ int VbfFile::Export(const string& out_dir) {
         stringstream str_buff;
         str_buff << m_file_name << "_section_" << ++i << "_" << std::hex << section->start_addr << "_" << section->length << ".bin";
 
-        SaveToFile(out_dir + str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
+        FTUtils::bufferToFile(out_dir + str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
         Value section_obj(kObjectType);
         {
             section_obj.AddMember("file", Value(str_buff.str().c_str(), allocator), allocator);
