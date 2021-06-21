@@ -20,13 +20,13 @@
 using namespace std;
 using namespace rapidjson;
 namespace fs = std::filesystem;
+using std::runtime_error;
 
 int VbfFile::OpenFile(const string& file_path) {
 
     ifstream vbf_file(file_path, ios::binary | ios::ate);
     if(vbf_file.fail()) {
-        cerr << "Open VBF file error" << endl;
-        return -1;
+        throw runtime_error("Open VBF file error");
     }
     ifstream::pos_type pos = vbf_file.tellg();
 
@@ -34,9 +34,7 @@ int VbfFile::OpenFile(const string& file_path) {
     vbf_file.seekg(0, ios::beg);
     vbf_file.read(reinterpret_cast<char *>(&file_buff[0]), file_buff.size());
     if (!vbf_file) {
-        cerr << "Read VBF file error, only " << vbf_file.gcount() << " bytes could be read" << endl;
-        vbf_file.close();
-        return -1;
+        throw runtime_error("Read VBF file error. Only " + to_string(vbf_file.gcount()) + " bytes could be read");
     }
     vbf_file.close();
 
@@ -63,8 +61,7 @@ int VbfFile::OpenFile(const string& file_path) {
     smatch m;
     regex_search(m_ascii_header, m, regex("\\bfile_checksum.*=.*0x(.*);"));
     if (m.size() != 2) {
-        cerr << "VBF ascii header not contain CRC32 checksum" << endl;
-        return -1;
+        throw runtime_error("Parse VBF file error. ASCII header doesn't contain CRC32 checksum");
     }
     m_CRC32 = stoul(m[1], nullptr, 16);
 
@@ -85,8 +82,7 @@ int VbfFile::OpenFile(const string& file_path) {
 
     auto crc32 = CRC::Calculate(&file_buff[data_section_offset], m_content_size, CRC::CRC_32());
     if (m_CRC32 != crc32) {
-        cerr << "VBF binary data wrong checksum" << endl;
-        return -1;
+        throw runtime_error("Parse VBF file error. Binary data CRC32 mismatch");
     }
 
     //start read binary sections
@@ -171,7 +167,7 @@ int VbfFile::Import(const string& conf_file_path) {
 
     ifstream config_file(conf_file_path);
     if(config_file.fail()) {
-        return -1;
+        throw runtime_error("Import VBF file error. Can't open config file '" + conf_file_path + "'");
     }
 
     string content((istreambuf_iterator<char>(config_file)), istreambuf_iterator<char>());
@@ -182,8 +178,7 @@ int VbfFile::Import(const string& conf_file_path) {
     string header_file_path = config_dir.string() + "/" + v.GetString();
     ifstream header_file(header_file_path, ios::binary);
     if(header_file.fail()) {
-        cerr << "Can't open header " << header_file_path << endl;
-        return -1;
+        throw runtime_error("Import VBF file error. Can't open header file '" + header_file_path + "'");
     }
     string vbf_header((istreambuf_iterator<char>(header_file)), istreambuf_iterator<char>());
     //TODO: validate header
@@ -204,14 +199,16 @@ int VbfFile::Import(const string& conf_file_path) {
             string vbf_section_path = config_dir.string() + "/" +file.GetString();
             ifstream vbf_section(vbf_section_path, ios::binary | std::ios::ate);
             if(vbf_section.fail()) {
-                cerr << "Can't open vbf section " << vbf_section_path << endl;
+                throw runtime_error("Import VBF file error. Can't open VBF section file '" + vbf_section_path + "'");
             }
             streamsize vbf_section_size = vbf_section.tellg();
             vbf_section.seekg(0, ios::beg);
 
             vector<uint8_t> vbf_section_data(vbf_section_size);
             if (!vbf_section.read(reinterpret_cast<char *>(vbf_section_data.data()), vbf_section_size))
-                cerr << "Can't read vbf section file" << endl;
+            {
+                throw runtime_error("Import VBF file error. Can't read VBF section file '" + vbf_section_path + "'");
+            }
 
             vbf_section.close();
 
@@ -283,8 +280,8 @@ int VbfFile::SaveToFile(std::string file_path) {
     smatch m;
     regex_search(m_ascii_header, m, regex("\\bfile_checksum.*=.*0x(.*);"));
     if (m.size() != 2) {
-        cerr << "VBF ascii header not contain CRC32 checksum" << endl;
-        return -1;
+        //FIXME: move this check to Import function
+        throw runtime_error("Save VBF error. ASCII header not contain CRC32 checksum");
     }
     search_and_replace(m_ascii_header, m[1], str_buff.str());
 
@@ -299,8 +296,7 @@ int VbfFile::SaveToFile(std::string file_path) {
     // create out file
     ofstream outfile(file_path, ios::binary | ios::out);
     if(outfile.fail()) {
-        cerr << "Can't create out file " << file_path << endl;
-        return -1;
+        throw runtime_error("Save VBF error. Can't create output file '" + file_path + "'");
     }
 
     outfile.write(m_ascii_header.c_str(), m_ascii_header.length());
