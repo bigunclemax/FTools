@@ -81,7 +81,9 @@ void EifImage8bit::openBmp(const fs::path& file_name) {
 void EifImage8bit::saveBmp(const fs::path& file_name) const {
 
     BMP bmp_image;
-    bmp_image.SetSize((int)width, (int)height);
+    if (!bmp_image.SetSize((int)width, (int)height)) {
+        throw runtime_error("Error set size of bmp");
+    }
 
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < width; ++i){
@@ -97,7 +99,9 @@ void EifImage8bit::saveBmp(const fs::path& file_name) const {
         }
     }
 
-    bmp_image.WriteToFile(file_name.string().c_str());
+    if (!bmp_image.WriteToFile(file_name.string().c_str())) {
+        throw runtime_error("Error save bmp '" + file_name.string() + "'");
+    }
 }
 
 vector<uint8_t> EifImage8bit::getBitmapRBGA() const {
@@ -286,7 +290,9 @@ void EifImage16bit::saveBmp(const fs::path& file_name) const {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
-    bmp_image.SetSize((int)width, (int)height);
+    if (!bmp_image.SetSize((int)width, (int)height)) {
+        throw runtime_error("Error set size of bmp");
+    }
 
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < width; ++i){
@@ -300,7 +306,9 @@ void EifImage16bit::saveBmp(const fs::path& file_name) const {
         }
     }
 
-    bmp_image.WriteToFile(file_name.string().c_str());
+    if (!bmp_image.WriteToFile(file_name.string().c_str())) {
+        throw runtime_error("Error save bmp '" + file_name.string() + "'");
+    }
 }
 
 int EifImage16bit::setPalette(const vector<uint8_t> &data) {
@@ -382,7 +390,9 @@ void EifImage32bit::saveBmp(const fs::path& file_name) const {
 
     BMP bmp_image;
     bmp_image.SetBitDepth(32);
-    bmp_image.SetSize((int)width, (int)height);
+    if (!bmp_image.SetSize((int)width, (int)height)) {
+        throw runtime_error("Error set size of bmp");
+    }
 
     for(auto j =0; j < height; ++j){
         for(auto i=0; i < width; ++i){
@@ -397,7 +407,9 @@ void EifImage32bit::saveBmp(const fs::path& file_name) const {
             bmp_image.SetPixel(i, j, rgb_pixel);
         }
     }
-    bmp_image.WriteToFile(file_name.string().c_str());
+    if (!bmp_image.WriteToFile(file_name.string().c_str())) {
+        throw runtime_error("Error save bmp '" + file_name.string() + "'");
+    }
 }
 
 vector<uint8_t> EifImage32bit::getBitmapRBGA() const {
