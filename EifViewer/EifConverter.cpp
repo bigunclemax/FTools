@@ -50,10 +50,12 @@ void EifImageBase::saveEif(const fs::path& file_name) const {
     FTUtils::vectorToFile(file_name,saveEifToVector());
 }
 
-int EifImage8bit::openBmp(const fs::path& file_name) {
+void EifImage8bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    bmp_image.ReadFromFile(file_name.string().c_str());
+    if (!bmp_image.ReadFromFile(file_name.string().c_str())) {
+        throw runtime_error("Error open bmp '" + file_name.string() + "'");
+    }
 
     width = (unsigned)bmp_image.TellWidth();
     height = (unsigned)bmp_image.TellHeight();
@@ -74,8 +76,6 @@ int EifImage8bit::openBmp(const fs::path& file_name) {
             m_bitmap_data[j * aligned_width + i] = pixel;
         }
     }
-
-    return 0;
 }
 
 void EifImage8bit::saveBmp(const fs::path& file_name) const {
@@ -246,10 +246,12 @@ int EifImage16bit::openEif(const vector<uint8_t> &data) {
     return 0;
 }
 
-int EifImage16bit::openBmp(const fs::path& file_name) {
+void EifImage16bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    bmp_image.ReadFromFile(file_name.string().c_str());
+    if (!bmp_image.ReadFromFile(file_name.string().c_str())) {
+        throw runtime_error("Error open bmp '" + file_name.string() + "'");
+    }
 
     bool hasAlpha = (bmp_image.TellBitDepth() == 32);
 
@@ -278,8 +280,6 @@ int EifImage16bit::openBmp(const fs::path& file_name) {
         exq_get_palette(pExq, m_palette.data(), EIF_MULTICOLOR_NUM_COLORS);
         exq_free(pExq);
     }
-
-    return 0;
 }
 
 void EifImage16bit::saveBmp(const fs::path& file_name) const {
@@ -413,10 +413,12 @@ vector<uint8_t> EifImage32bit::getBitmapRBGA() const {
     return bitmap;
 }
 
-int EifImage32bit::openBmp(const fs::path& file_name) {
+void EifImage32bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    bmp_image.ReadFromFile(file_name.string().c_str());
+    if (!bmp_image.ReadFromFile(file_name.string().c_str())) {
+        throw runtime_error("Error open bmp '" + file_name.string() + "'");
+    }
 
     bool hasAlpha = (bmp_image.TellBitDepth() == 32);
 
@@ -437,8 +439,6 @@ int EifImage32bit::openBmp(const fs::path& file_name) {
             m_bitmap_data[0 + 0 + j * width * 4 + i * 4] = rgb_pixel.Blue;
         }
     }
-
-    return 0;
 }
 
 void EifConverter::eifToBmpFile(const vector<uint8_t> &data, const fs::path &out_file_name,

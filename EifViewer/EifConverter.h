@@ -69,7 +69,7 @@ protected:
 public:
     virtual int openEif(const vector<uint8_t>& data) = 0;
     [[nodiscard]] virtual int getType() const = 0;
-    virtual int openBmp(const fs::path& fileName) = 0;
+    virtual void openBmp(const fs::path& fileName) = 0;
     virtual void saveBmp(const fs::path& fileName) const = 0;
     virtual void saveEif(const fs::path& fileName) const;
     [[nodiscard]] virtual vector<uint8_t> saveEifToVector() const;
@@ -87,7 +87,7 @@ public:
     [[nodiscard]] inline int getType() const override { return type; };
     int openEif(const vector<uint8_t>& data) override;
     void saveBmp(const fs::path& file_name) const override;
-    int openBmp(const fs::path& file_name) override;
+    void openBmp(const fs::path& file_name) override;
     [[nodiscard]] vector<uint8_t> getBitmapRBGA() const override;
 };
 
@@ -101,7 +101,7 @@ public:
     EifImage16bit() = default;
     int openEif(const vector<uint8_t>& data) override;
     void saveBmp(const fs::path& file_name) const override;
-    int openBmp(const fs::path& file_name) override;
+    void openBmp(const fs::path& file_name) override;
     int setPalette(const vector<uint8_t>& data) override;
     void savePalette(const fs::path& file_name) const override;
     [[nodiscard]] vector<uint8_t> getBitmapRBGA() const override;
@@ -112,7 +112,7 @@ class EifImage32bit: public EifImageBase {
 public:
     [[nodiscard]] inline int getType() const override { return type; };
     int openEif(const vector<uint8_t>& data) override;
-    int openBmp(const fs::path& file_name) override;
+    void openBmp(const fs::path& file_name) override;
     void saveBmp(const fs::path& file_name) const override;
     [[nodiscard]] vector<uint8_t> getBitmapRBGA() const override;
 };
