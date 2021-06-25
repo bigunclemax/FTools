@@ -7,7 +7,6 @@
 #include <winsock2.h>
 #endif
 
-#include <filesystem>
 #include <utility>
 #include <CRC.h>
 #include <sstream>
@@ -19,14 +18,13 @@
 
 using namespace std;
 using namespace rapidjson;
-namespace fs = std::filesystem;
 using std::runtime_error;
 
-int VbfFile::OpenFile(const string& file_path) {
+int VbfFile::OpenFile(const fs::path &file_path) {
 
     ifstream vbf_file(file_path, ios::binary | ios::ate);
     if(vbf_file.fail()) {
-        throw runtime_error("Open VBF file error");
+        throw runtime_error("Open VBF file error. '" + file_path.string() + "' " + string(strerror(errno)));
     }
     ifstream::pos_type pos = vbf_file.tellg();
 
@@ -118,7 +116,7 @@ int VbfFile::OpenFile(const string& file_path) {
     return 0;
 }
 
-int VbfFile::Export(const string& out_dir) {
+int VbfFile::Export(const fs::path &out_dir) {
 
     if (!IsOpen()) {
         return -1;
@@ -131,7 +129,7 @@ int VbfFile::Export(const string& out_dir) {
     Value sections(kArrayType);
 
     string header_name = m_file_name + "_ascii_head.txt";
-    FTUtils::bufferToFile(out_dir + header_name, &m_ascii_header[0], m_ascii_header.length());
+    FTUtils::bufferToFile(out_dir / header_name, &m_ascii_header[0], m_ascii_header.length());
     document.AddMember("header", Value(header_name.c_str(), allocator), allocator);
 
     int i = 0;
@@ -139,7 +137,7 @@ int VbfFile::Export(const string& out_dir) {
         stringstream str_buff;
         str_buff << m_file_name << "_section_" << ++i << "_" << std::hex << section->start_addr << "_" << section->length << ".bin";
 
-        FTUtils::bufferToFile(out_dir + str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
+        FTUtils::bufferToFile(out_dir / str_buff.str(), reinterpret_cast<char *>(&section->data[0]), section->data.size());
         Value section_obj(kObjectType);
         {
             section_obj.AddMember("file", Value(str_buff.str().c_str(), allocator), allocator);
@@ -154,20 +152,20 @@ int VbfFile::Export(const string& out_dir) {
     StringBuffer buffer;
     PrettyWriter<StringBuffer> writer(buffer);
     document.Accept(writer);
-    ofstream config(out_dir + m_file_name + "_config.json", ios::out);
+    ofstream config(out_dir / (m_file_name + "_config.json"), ios::out);
     config.write(buffer.GetString(), buffer.GetSize());
 
     return 0;
 }
 
-int VbfFile::Import(const string& conf_file_path) {
+int VbfFile::Import(const fs::path &conf_file_path) {
 
     fs::path config_path((fs::absolute(conf_file_path)));
     auto config_dir = config_path.parent_path();
 
     ifstream config_file(conf_file_path);
     if(config_file.fail()) {
-        throw runtime_error("Import VBF file error. Can't open config file '" + conf_file_path + "'");
+        throw runtime_error("Import VBF file error. Can't open config file '" + conf_file_path.string() + "'");
     }
 
     string content((istreambuf_iterator<char>(config_file)), istreambuf_iterator<char>());
@@ -256,11 +254,7 @@ uint32_t VbfFile::calcCRC32() {
     return crc32;
 }
 
-int VbfFile::SaveToFile(std::string file_path) {
-
-    if(file_path.empty()) {
-        file_path = m_file_name;
-    }
+int VbfFile::SaveToFile(const fs::path &file_path) {
 
     auto search_and_replace = [](std::string& str, const std::string& oldStr, const std::string& newStr) {
         std::string::size_type pos = 0u;
@@ -296,7 +290,7 @@ int VbfFile::SaveToFile(std::string file_path) {
     // create out file
     ofstream outfile(file_path, ios::binary | ios::out);
     if(outfile.fail()) {
-        throw runtime_error("Save VBF error. Can't create output file '" + file_path + "'");
+        throw runtime_error("Save VBF error. Can't create output file '" + file_path.string() + "'");
     }
 
     outfile.write(m_ascii_header.c_str(), m_ascii_header.length());

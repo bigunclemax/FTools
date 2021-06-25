@@ -11,6 +11,9 @@
 #include <list>
 #include <fstream>
 #include <regex>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 struct VbfBinarySection {
     uint32_t start_addr;
@@ -37,10 +40,10 @@ public:
     };
 
     [[nodiscard]] bool IsOpen() const { return m_is_open;};
-    int OpenFile (const std::string& file_path);
-    int SaveToFile (std::string file_path);
-    int Export(const std::string& out_dir);
-    int Import(const std::string& conf_file_path);
+    int OpenFile (const fs::path &file_path);
+    int SaveToFile (const fs::path &file_path);
+    int Export(const fs::path &out_dir);
+    int Import(const fs::path &conf_file_path);
 
     int GetSectionInfo(uint8_t section_idx, SectionInfo &info);
     int GetSectionRaw(uint8_t section_idx, std::vector<uint8_t>& section_data);
