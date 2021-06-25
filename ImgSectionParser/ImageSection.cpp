@@ -126,36 +126,39 @@ std::vector<ImageSection::HeaderRecord> ImageSection::HeaderFromCsv(const fs::pa
 
     std::vector<HeaderRecord> header_data;
     header_data.reserve(2000);
+    try {
+        io::CSVReader<11> in(csv_file_path.string());
+        in.read_header(io::ignore_extra_column,
+                       H_WIDTH ,
+                       H_HEIGHT ,
+                       H_X ,
+                       H_Y ,
+                       H_TYPE ,
+                       H_Z ,
+                       H_U0 ,
+                       H_U1 ,
+                       H_U2 ,
+                       H_U3 ,
+                       H_U4  );
 
-    io::CSVReader<11> in(csv_file_path.string());
-    in.read_header(io::ignore_extra_column,
-                   H_WIDTH ,
-                   H_HEIGHT ,
-                   H_X ,
-                   H_Y ,
-                   H_TYPE ,
-                   H_Z ,
-                   H_U0 ,
-                   H_U1 ,
-                   H_U2 ,
-                   H_U3 ,
-                   H_U4  );
+        HeaderRecord hr = {};
 
-    HeaderRecord hr = {};
-
-    while(in.read_row(hr.width,
-                hr.height ,
-                hr.X ,
-                hr.Y ,
-                hr.type ,
-                hr.Z ,
-                hr.intensity ,
-                hr.R ,
-                hr.G ,
-                hr.B ,
-                hr.palette_id ))
-    {
-        header_data.push_back(hr);
+        while(in.read_row(hr.width,
+                          hr.height ,
+                          hr.X ,
+                          hr.Y ,
+                          hr.type ,
+                          hr.Z ,
+                          hr.intensity ,
+                          hr.R ,
+                          hr.G ,
+                          hr.B ,
+                          hr.palette_id ))
+        {
+            header_data.push_back(hr);
+        }
+    } catch (const std::exception& ex) {
+        throw runtime_error("Import CSV error. " + string(ex.what()));
     }
 
     return header_data;
