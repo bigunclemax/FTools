@@ -74,6 +74,26 @@ namespace FTUtils {
         return data;
     }
 
+    inline std::string path2c_str(const fs::path &file_path) {
+#ifdef _WIN32
+        const auto &ws = file_path.wstring();
+        std::setlocale(LC_ALL, "");
+        const std::locale locale("");
+        typedef std::codecvt<wchar_t, char, std::mbstate_t> converter_type;
+        const auto& converter = std::use_facet<converter_type>(locale);
+        std::vector<char> to(ws.length() * converter.max_length());
+        std::mbstate_t state;
+        const wchar_t* from_next;
+        char* to_next;
+        const converter_type::result result = converter.out(state, ws.data(), ws.data() + ws.length(), from_next, &to[0], &to[0] + to.size(), to_next);
+        if (result == converter_type::ok or result == converter_type::noconv) {
+            return std::string (&to[0], to_next);
+        }
+        throw std::runtime_error("WString converting error");
+#else
+        return file_path.string();
+#endif
+    }
 }
 
 #endif //FORDTOOLS_UTILS_H
