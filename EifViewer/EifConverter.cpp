@@ -53,7 +53,7 @@ void EifImageBase::saveEif(const fs::path& file_name) const {
 void EifImage8bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    if (!bmp_image.ReadFromFile(file_name.string().c_str())) {
+    if (!bmp_image.ReadFromFile(FTUtils::path2c_str(file_name).c_str())) {
         throw runtime_error("Error open bmp '" + file_name.string() + "'");
     }
 
@@ -99,7 +99,7 @@ void EifImage8bit::saveBmp(const fs::path& file_name) const {
         }
     }
 
-    if (!bmp_image.WriteToFile(file_name.string().c_str())) {
+    if (!bmp_image.WriteToFile(FTUtils::path2c_str(file_name).c_str())) {
         throw runtime_error("Error save bmp '" + file_name.string() + "'");
     }
 }
@@ -253,7 +253,7 @@ int EifImage16bit::openEif(const vector<uint8_t> &data) {
 void EifImage16bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    if (!bmp_image.ReadFromFile(file_name.string().c_str())) {
+    if (!bmp_image.ReadFromFile(FTUtils::path2c_str(file_name).c_str())) {
         throw runtime_error("Error open bmp '" + file_name.string() + "'");
     }
 
@@ -306,7 +306,7 @@ void EifImage16bit::saveBmp(const fs::path& file_name) const {
         }
     }
 
-    if (!bmp_image.WriteToFile(file_name.string().c_str())) {
+    if (!bmp_image.WriteToFile(FTUtils::path2c_str(file_name).c_str())) {
         throw runtime_error("Error save bmp '" + file_name.string() + "'");
     }
 }
@@ -407,7 +407,7 @@ void EifImage32bit::saveBmp(const fs::path& file_name) const {
             bmp_image.SetPixel(i, j, rgb_pixel);
         }
     }
-    if (!bmp_image.WriteToFile(file_name.string().c_str())) {
+    if (!bmp_image.WriteToFile(FTUtils::path2c_str(file_name).c_str())) {
         throw runtime_error("Error save bmp '" + file_name.string() + "'");
     }
 }
@@ -428,7 +428,7 @@ vector<uint8_t> EifImage32bit::getBitmapRBGA() const {
 void EifImage32bit::openBmp(const fs::path& file_name) {
 
     BMP bmp_image;
-    if (!bmp_image.ReadFromFile(file_name.string().c_str())) {
+    if (!bmp_image.ReadFromFile(FTUtils::path2c_str(file_name).c_str())) {
         throw runtime_error("Error open bmp '" + file_name.string() + "'");
     }
 
