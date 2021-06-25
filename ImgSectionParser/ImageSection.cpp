@@ -127,7 +127,7 @@ std::vector<ImageSection::HeaderRecord> ImageSection::HeaderFromCsv(const fs::pa
     std::vector<HeaderRecord> header_data;
     header_data.reserve(2000);
     try {
-        io::CSVReader<11> in(csv_file_path.string());
+        io::CSVReader<11> in(FTUtils::path2c_str(csv_file_path));
         in.read_header(io::ignore_extra_column,
                        H_WIDTH ,
                        H_HEIGHT ,
